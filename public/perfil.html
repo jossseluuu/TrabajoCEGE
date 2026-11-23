@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi perfil | CeutaPlay</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="js/config.js" defer></script>
+    <script src="js/data.js" defer></script>
+    <script src="js/store.js" defer></script>
+    <script src="js/booking-storage.js" defer></script>
+    <script src="js/perfil.js" defer></script>
+</head>
+<body>
+    <header class="navbar">
+        <div class="container nav-content">
+            <a href="index.html" class="logo">CEUTA<span>PLAY</span></a>
+            <div class="nav-actions">
+                <a href="index.html" class="login-btn">Volver al inicio</a>
+                <button type="button" class="login-btn" id="logout-btn">Cerrar sesión</button>
+            </div>
+        </div>
+    </header>
+    <main class="login-page">
+        <section class="login-panel profile-panel" aria-labelledby="profile-title" id="profile-panel" hidden>
+            <h1 id="profile-title">Mi perfil</h1>
+            <p id="profile-name" hidden></p>
+            <p id="profile-email" class="profile-email"></p>
+            <section class="profile-bookings" aria-labelledby="bookings-title">
+                <div class="profile-bookings-header">
+                    <h2 id="bookings-title">Mis reservas de pádel</h2>
+                    <a href="reservas.html" class="register-btn">Reservar pádel</a>
+                </div>
+                <p>Tus próximas partidas y las que ya has jugado.</p>
+                <dl class="profile-stats">
+                    <div><dt>Activas</dt><dd id="active-count">0</dd></div>
+                    <div><dt>Anteriores</dt><dd id="past-count">0</dd></div>
+                    <div><dt>Total</dt><dd id="total-count">0</dd></div>
+                </dl>
+                <p><strong>Próxima partida</strong> <span id="next-booking"></span></p>
+                <div class="profile-booking-lists">
+                    <section aria-labelledby="active-title">
+                        <h3 id="active-title">Reservas activas</h3>
+                        <ul id="active-bookings"></ul>
+                    </section>
+                    <section aria-labelledby="past-title">
+                        <h3 id="past-title">Reservas anteriores</h3>
+                        <ul id="past-bookings"></ul>
+                    </section>
+                </div>
+            </section>
+            <section class="profile-bookings" aria-labelledby="auctions-title">
+                <div class="profile-bookings-header">
+                    <h2 id="auctions-title">Mis subastas</h2>
+                    <a href="index.html#subastas" class="register-btn">Ir a las subastas</a>
+                </div>
+                <dl class="profile-stats">
+                    <div><dt>Creadas por mí</dt><dd id="auctions-created">0</dd></div>
+                    <div><dt>Pujando (en curso)</dt><dd id="auctions-bidding">0</dd></div>
+                    <div><dt>Ganadas</dt><dd id="auctions-won">0</dd></div>
+                </dl>
+                <div class="profile-booking-lists">
+                    <section aria-labelledby="bidding-title">
+                        <h3 id="bidding-title">Pujas en curso</h3>
+                        <ul id="bidding-list"></ul>
+                    </section>
+                    <section aria-labelledby="won-title">
+                        <h3 id="won-title">Subastas ganadas</h3>
+                        <ul id="won-list"></ul>
+                    </section>
+                </div>
+            </section>
+        </section>
+        <noscript><p>Activa JavaScript para abrir tu perfil.</p></noscript>
+    </main>
+</body>
+</html>

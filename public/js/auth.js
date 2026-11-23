@@ -103,10 +103,11 @@ const Auth = (() => {
 
         if (usuario) {
             zona.innerHTML = `
-                <span class="user-chip" title="${UI.escapeHTML(usuario.email)}">
+                <a href="perfil.html" class="user-chip" title="${UI.escapeHTML(usuario.email)}">
                     <span class="user-avatar">${UI.escapeHTML(usuario.nombre.charAt(0).toUpperCase())}</span>
                     ${UI.escapeHTML(usuario.nombre)}
-                </span>
+                </a>
+                <a href="perfil.html" class="register-btn">Mi perfil</a>
                 <button type="button" class="login-btn" data-accion="logout">Cerrar sesión</button>`;
         } else {
             zona.innerHTML = `
@@ -128,13 +129,13 @@ const Auth = (() => {
         });
 
         // Botones del menú
-        document.getElementById("nav-actions").addEventListener("click", (event) => {
+        document.getElementById("nav-actions").addEventListener("click", async (event) => {
             const boton = event.target.closest("[data-accion]");
             if (!boton) return;
             if (boton.dataset.accion === "login") abrir("login");
             if (boton.dataset.accion === "registro") abrir("registro");
             if (boton.dataset.accion === "logout") {
-                Store.cerrarSesion();
+                await Store.cerrarSesion();
                 pintarNavbar();
                 document.dispatchEvent(new CustomEvent("sesion-cambiada"));
                 UI.toast("Has cerrado sesión.");
@@ -146,6 +147,8 @@ const Auth = (() => {
         loginForm.addEventListener("submit", async (event) => {
             event.preventDefault();
             const datos = new FormData(loginForm);
+            const boton = loginForm.querySelector("[type=submit]");
+            boton.disabled = true;
             try {
                 const usuario = await Store.login(
                     datos.get("email"),
@@ -155,6 +158,8 @@ const Auth = (() => {
                 trasEntrar(usuario, "¡Hola de nuevo, {nombre}!");
             } catch (error) {
                 mostrarError(loginForm, error.message);
+            } finally {
+                boton.disabled = false;
             }
         });
 
@@ -167,6 +172,8 @@ const Auth = (() => {
                 mostrarError(registerForm, "Las contraseñas no coinciden.");
                 return;
             }
+            const boton = registerForm.querySelector("[type=submit]");
+            boton.disabled = true;
             try {
                 await Store.registrar({
                     nombre: datos.get("nombre"),
@@ -177,11 +184,28 @@ const Auth = (() => {
                 trasEntrar(usuario, "¡Bienvenido/a a CeutaPlay, {nombre}!");
             } catch (error) {
                 mostrarError(registerForm, error.message);
+            } finally {
+                boton.disabled = false;
             }
         });
 
+        // Modo de datos: con servidor (Supabase) o solo en este navegador
+        const modoDatos = document.getElementById("modo-datos");
+        if (modoDatos) {
+            modoDatos.textContent = Store.modo === "remoto"
+                ? "🟢 Conectado al servidor: todos ven las mismas subastas"
+                : "🟡 Modo local: los datos solo se guardan en este navegador";
+        }
+
+        // Las cuentas de prueba y el botón de restablecer solo existen en modo local
+        const botonReset = document.getElementById("reset-demo");
+        if (Store.modo === "remoto") {
+            botonReset.hidden = true;
+            document.querySelectorAll(".demo-box").forEach((caja) => (caja.hidden = true));
+        }
+
         // Restablecer los datos de ejemplo
-        document.getElementById("reset-demo").addEventListener("click", async () => {
+        botonReset.addEventListener("click", async () => {
             if (!confirm("Se borrarán todos los usuarios y subastas guardados en este navegador. ¿Continuar?")) return;
             await Store.reiniciarDemo();
             pintarNavbar();
@@ -189,13 +213,8 @@ const Auth = (() => {
             UI.toast("Datos de ejemplo restablecidos.");
         });
 
-        // Si se inicia o cierra sesión con "Recordarme" en otra pestaña
-        window.addEventListener("storage", (event) => {
-            if (event.key === Store.KEYS.sesion || event.key === Store.KEYS.usuarios || event.key === null) {
-                pintarNavbar();
-                document.dispatchEvent(new CustomEvent("sesion-cambiada"));
-            }
-        });
+        // Si la sesión cambia desde fuera (otra pestaña, caducidad…)
+        document.addEventListener("sesion-cambiada", pintarNavbar);
 
         pintarNavbar();
     }

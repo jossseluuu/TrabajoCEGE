@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrarse | CeutaPlay</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="js/config.js" defer></script>
+    <script src="js/data.js" defer></script>
+    <script src="js/store.js" defer></script>
+    <script src="js/login.js" defer></script>
+</head>
+<body>
+    <header class="navbar">
+        <div class="container nav-content">
+            <a href="index.html" class="logo">CEUTA<span>PLAY</span></a>
+            <a href="index.html" class="login-btn">Volver al inicio</a>
+        </div>
+    </header>
+
+    <main class="login-page">
+        <section class="login-panel" aria-labelledby="login-title">
+            <h1 id="login-title">Registrarse</h1>
+            <p id="login-help">Crea tu cuenta para reservar pistas y participar en las subastas.</p>
+
+            <form id="login-form" class="login-form" aria-describedby="login-help">
+                <label for="registration-name">Nombre visible</label>
+                <input id="registration-name" autocomplete="nickname" minlength="2" maxlength="40" required>
+
+                <label for="email">Correo electrónico</label>
+                <input type="email" id="email" autocomplete="email" placeholder="jugador@ejemplo.com" required>
+
+                <label for="password">Contraseña (mínimo 6 caracteres)</label>
+                <input type="password" id="password" autocomplete="new-password" minlength="6" required>
+
+                <label for="password2">Repite la contraseña</label>
+                <input type="password" id="password2" autocomplete="new-password" minlength="6" required>
+
+                <button type="submit" class="register-btn">Crear cuenta</button>
+            </form>
+
+            <p id="login-status" role="status"></p>
+            <p>¿Ya tienes cuenta? <a href="login.html">Iniciar sesión</a></p>
+            <noscript><p>Activa JavaScript para probar el formulario.</p></noscript>
+        </section>
+    </main>
+</body>
+</html>
