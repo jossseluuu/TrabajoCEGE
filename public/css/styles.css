@@ -157,7 +157,7 @@ nav a:hover {
     font-weight: 700;
 }
 
-.login-form input,
+.login-form input:not([type="radio"]),
 .login-form select {
     width: 100%;
     margin-bottom: 10px;
@@ -183,17 +183,206 @@ nav a:hover {
     margin: 0;
 }
 
-.reservation-panel h2 {
-    margin-top: 24px;
-    font-size: 1.125rem;
+.reservation-page {
+    max-width: 1080px;
+    padding-block: clamp(28px, 6vw, 64px);
 }
 
-.reservation-panel ul {
-    padding-left: 20px;
+.reservation-heading {
+    margin-bottom: 24px;
 }
 
-.reservation-panel li {
+.reservation-heading h1 {
+    font-size: clamp(2rem, 5vw, 3rem);
+    letter-spacing: -0.045em;
+}
+
+.reservation-heading p,
+.reservation-panel p {
     margin-top: 8px;
+    color: var(--text);
+    line-height: 1.5;
+}
+
+.reservation-layout {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+    align-items: start;
+    gap: 20px;
+}
+
+.reservation-panel {
+    min-width: 0;
+    padding: clamp(18px, 3vw, 28px);
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    background: var(--white);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+}
+
+.reservation-panel h2 {
+    font-size: 1.25rem;
+}
+
+.reservation-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 18px;
+}
+
+.reservation-field {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.reservation-field input,
+.reservation-field select {
+    min-width: 0;
+    min-height: 46px;
+    margin-bottom: 0;
+    background: var(--white);
+}
+
+.reservation-field:first-child,
+.court-picker,
+.reservation-form > button,
+.reservation-total {
+    grid-column: 1 / -1;
+}
+
+.court-picker {
+    min-width: 0;
+    border: 0;
+}
+
+.court-picker legend {
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.court-picker p {
+    font-size: 0.875rem;
+}
+
+.court-options {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.court-option {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background: var(--light);
+    color: var(--text);
+}
+
+.court-option input {
+    accent-color: #166534;
+}
+
+.court-option-state {
+    margin-inline-start: auto;
+}
+
+.court-available {
+    border-color: #86efac;
+    background: #f0fdf4;
+    color: #14532d;
+    cursor: pointer;
+}
+
+.court-available:has(input:checked) {
+    border-color: #166534;
+}
+
+.court-unavailable {
+    border-color: #fca5a5;
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+.reservation-form > button:disabled {
+    background: #e2e8f0;
+    color: var(--text);
+    cursor: not-allowed;
+}
+
+.reservation-total {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 14px;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: var(--dark);
+}
+
+.reservation-total strong {
+    font-size: 1.5rem;
+    color: var(--primary-dark);
+}
+
+#reservation-status:empty {
+    margin: 0;
+}
+
+.reservation-history {
+    margin-top: 20px;
+}
+
+.reservation-history ul {
+    display: grid;
+    margin-top: 12px;
+    list-style: none;
+    color: var(--text);
+}
+
+.reservation-history li {
+    padding: 10px 0;
+    border-top: 1px solid #e2e8f0;
+}
+
+.reservation-location {
+    scroll-margin-top: 130px;
+}
+
+.reservation-location iframe {
+    display: block;
+    width: 100%;
+    height: 250px;
+    margin-top: 12px;
+    border: 1px solid #dbeafe;
+    border-radius: 12px;
+}
+
+.reservation-location a {
+    display: inline-block;
+    margin-top: 12px;
+    margin-inline-end: 14px;
+    color: var(--primary-dark);
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.card-footer.booking-card-footer {
+    display: grid;
+    gap: 14px;
+}
+
+.booking-card-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
 .profile-panel {
@@ -400,7 +589,10 @@ nav a:hover {
 /* INSTALACIONES */
 
 .card {
+    display: flex;
+    flex-direction: column;
     background: white;
+    border: 1px solid #e2e8f0;
     border-radius: 18px;
     overflow: hidden;
     box-shadow: 0 5px 25px rgba(0,0,0,0.05);
@@ -451,6 +643,9 @@ nav a:hover {
 }
 
 .card-content {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
     padding: 23px;
 }
 
@@ -472,6 +667,7 @@ nav a:hover {
     gap: 10px;
     border-top: 1px solid #e2e8f0;
     padding-top: 20px;
+    margin-top: auto;
 }
 
 .price {
@@ -495,6 +691,16 @@ nav a:hover {
     padding: 12px 15px;
     border-radius: 9px;
     font-weight: 700;
+}
+
+.reserve-btn:hover {
+    background: var(--primary-dark);
+}
+
+.reserve-btn:focus-visible,
+.reservation-location a:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
 }
 
 /* SUBASTAS */
@@ -639,6 +845,10 @@ nav a:hover {
 }
 
 @media (max-width: 600px) {
+    .reservation-form {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     .container {
         width: 92%;
     }

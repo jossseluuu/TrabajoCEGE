@@ -30,7 +30,7 @@ function showBookingSummary() {
     const now = ceutaDateTime();
     const bookings = getReservations().map((booking) => ({
         ...booking,
-        facilityName: INSTALACIONES.find(({ id }) => id === booking.facility)?.nombre || "Instalación de pádel",
+        facilityName: INSTALACIONES.find(({ id }) => id === booking.facility)?.nombre || "Instalación deportiva",
     })).sort((first, second) => bookingStart(first).localeCompare(bookingStart(second)));
     const active = bookings.filter((booking) => bookingEnd(booking) > now);
     const past = bookings.filter((booking) => bookingEnd(booking) <= now).reverse();

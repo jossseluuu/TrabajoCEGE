@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reservar pádel | CeutaPlay</title>
+    <title>Reservar pista | CeutaPlay</title>
     <link rel="stylesheet" href="css/styles.css">
     <script src="js/data.js" defer></script>
     <script src="js/booking-storage.js" defer></script>
@@ -16,25 +16,52 @@
             <a href="index.html#instalaciones" class="login-btn">Volver a instalaciones</a>
         </div>
     </header>
-    <main class="login-page">
-        <section class="login-panel reservation-panel" aria-labelledby="reservation-title">
-            <h1 id="reservation-title">Reservar pádel</h1>
-            <p id="reservation-help">Modo demostración. Los turnos duran 1 hora y se guardan en este navegador. La confirmación oficial depende de cada instalación.</p>
-            <form id="reservation-form" class="login-form" aria-describedby="reservation-help">
-                <label for="facility">Instalación</label>
-                <select id="facility" required></select>
-                <label for="court">Pista</label>
-                <select id="court" required></select>
-                <label for="booking-date">Fecha</label>
-                <input id="booking-date" type="date" required>
-                <label for="booking-time">Hora de inicio</label>
-                <select id="booking-time" required></select>
-                <p>Tarifa de alquiler pendiente de confirmar</p>
-                <button type="submit" class="register-btn" disabled>Guardar reserva de prueba</button>
-            </form>
-            <p id="reservation-status" role="status"></p>
-            <noscript><p>Activa JavaScript para guardar reservas de prueba.</p></noscript>
-            <h2>Mis reservas de prueba</h2>
+    <main class="container reservation-page" aria-labelledby="reservation-title">
+        <header class="reservation-heading">
+            <h1 id="reservation-title">Reservar pista</h1>
+            <p id="reservation-help">Reserva de prueba. El turno se guarda en este navegador.</p>
+        </header>
+        <div class="reservation-layout">
+            <section class="reservation-panel" aria-labelledby="slot-title">
+                <h2 id="slot-title">Elige tu turno</h2>
+                <form id="reservation-form" class="login-form reservation-form" aria-describedby="reservation-help">
+                    <div class="reservation-field">
+                        <label for="facility">Instalación</label>
+                        <select id="facility" required></select>
+                    </div>
+                    <div class="reservation-field">
+                        <label for="booking-date">Fecha</label>
+                        <input id="booking-date" type="date" required>
+                    </div>
+                    <div class="reservation-field">
+                        <label for="booking-time">Hora de inicio</label>
+                        <select id="booking-time" required></select>
+                    </div>
+                    <fieldset class="court-picker" aria-describedby="court-status">
+                        <legend>Pista</legend>
+                        <p id="court-status" role="status"></p>
+                        <div id="court-options" class="court-options"></div>
+                    </fieldset>
+                    <div class="reservation-total" aria-live="polite">
+                        <span>Precio de prueba · 1 hora</span>
+                        <strong id="booking-price"></strong>
+                    </div>
+                    <button type="submit" class="register-btn" disabled>Guardar reserva de prueba</button>
+                </form>
+                <p id="reservation-status" role="status"></p>
+                <noscript><p>Activa JavaScript para guardar reservas de prueba.</p></noscript>
+            </section>
+            <section id="ubicacion" class="reservation-panel reservation-location" aria-labelledby="location-title" hidden>
+                <h2 id="location-title">Ubicación</h2>
+                <p id="location-address"></p>
+                <p id="location-note" hidden></p>
+                <iframe id="location-map" title="Mapa de la instalación" loading="lazy"></iframe>
+                <a id="location-link" target="_blank" rel="noopener noreferrer">Abrir en Google Maps</a>
+                <a id="facility-information" target="_blank" rel="noopener noreferrer" hidden>Ficha de la instalación</a>
+            </section>
+        </div>
+        <section class="reservation-panel reservation-history" aria-labelledby="history-title">
+            <h2 id="history-title">Mis reservas de prueba</h2>
             <ul id="reservation-list"></ul>
         </section>
     </main>
