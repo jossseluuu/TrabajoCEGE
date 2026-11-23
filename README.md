@@ -37,10 +37,45 @@ TrabajoGabi/
 │   ├── css/
 │   │   └── styles.css
 │   └── js/
-│       ├── data.js        ← deportes, instalaciones y subastas (editar aquí)
-│       └── main.js        ← pinta las tarjetas y gestiona el buscador
+│       ├── data.js        ← deportes, instalaciones, usuarios y subastas de ejemplo (editar aquí)
+│       ├── store.js       ← "base de datos": usuarios, sesión y subastas (localStorage)
+│       ├── main.js        ← pinta las instalaciones y gestiona el buscador
+│       ├── auth.js        ← login, registro y menú de usuario
+│       └── subastas.js    ← subastas entre usuarios: listado, crear, pujar, cuenta atrás
 └── README.md
 ```
+
+---
+
+## 🔐 Login y 🔥 subastas entre usuarios
+
+- **Registro e inicio de sesión** con nombre, correo y contraseña (la contraseña se guarda cifrada con SHA-256 + sal, nunca en texto plano).
+- **Crear subasta** (hay que haber iniciado sesión): instalación, fecha y hora del partido, precio de salida, incremento mínimo y duración (incluye una opción de *2 minutos* para hacer la demostración en clase).
+- **Pujar** (hay que haber iniciado sesión): cada puja debe superar la anterior en el incremento mínimo. No se puede pujar en tu propia subasta ni volver a pujar si ya vas ganando.
+- Cuenta atrás en directo. Al terminar, la subasta pasa a *Finalizadas* y se muestra el ganador.
+- Filtros: **En curso**, **Finalizadas**, **Mis subastas** y **Mis pujas**. Aviso de *"Te han superado"* si alguien puja más que tú.
+- El creador puede **cancelar** su subasta mientras no tenga pujas.
+
+**Cuentas de prueba** (contraseña `demo1234`): `ana@ceutaplay.es`, `luis@ceutaplay.es`, `marta@ceutaplay.es`.
+
+### Cómo enseñar una puja entre dos usuarios
+
+La sesión dura lo que la pestaña (salvo que marques *Recordarme*), así que:
+
+1. Abre la web en una pestaña e inicia sesión como **Luis**.
+2. Abre la web en **otra pestaña** del mismo navegador e inicia sesión como **Ana**.
+3. Puja con uno y verás que en la otra pestaña el precio se actualiza al momento y aparece *"Te han superado"*.
+
+El enlace **"Restablecer datos de ejemplo"** del pie de página borra todo y vuelve a crear los usuarios y subastas de prueba.
+
+### ⚠️ Limitación importante
+
+GitHub Pages no tiene servidor ni base de datos, así que los datos se guardan **en el navegador de cada persona** (`localStorage`). Eso significa que:
+
+- Los usuarios y pujas de un ordenador **no los ve otro ordenador** (sí otras pestañas del mismo navegador).
+- No es seguro para una web real: cualquiera puede modificar los datos desde las herramientas del navegador.
+
+Para que usuarios de distintos dispositivos pujen entre sí haría falta un backend (por ejemplo Firebase o Supabase, que tienen plan gratuito y funcionan con GitHub Pages). Todo el acceso a datos está aislado en `public/js/store.js`, así que solo habría que reescribir ese archivo.
 
 ---
 
@@ -76,7 +111,7 @@ No hace falta instalar nada. Cualquiera de estas opciones vale:
 
 ## ✏️ Cómo hacer cambios
 
-- **Añadir/editar instalaciones, deportes o subastas:** solo hay que tocar `public/js/data.js`.
+- **Añadir/editar instalaciones, deportes, usuarios o subastas de ejemplo:** solo hay que tocar `public/js/data.js`. Los datos de ejemplo solo se crean la primera vez que se abre la web; para ver los cambios pulsa *"Restablecer datos de ejemplo"* en el pie de página.
 - **Cambiar textos o secciones:** `public/index.html`.
 - **Cambiar estilos:** `public/css/styles.css`.
 

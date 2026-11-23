@@ -1,5 +1,6 @@
 // Lógica de la página. Sustituye a las plantillas de Django:
-// pinta las tarjetas a partir de data.js y gestiona el buscador.
+// pinta las tarjetas de instalaciones y gestiona el buscador.
+// El login está en auth.js y las subastas en subastas.js.
 
 function fechaISO(fecha) {
     const y = fecha.getFullYear();
@@ -29,29 +30,6 @@ function crearTarjetaInstalacion(instalacion) {
         </article>`;
 }
 
-function crearTarjetaSubasta(subasta) {
-    return `
-        <article class="auction-card">
-            <div class="auction-top">
-                <span class="auction-badge">🔥 DEMOSTRACIÓN</span>
-                <span class="discount-badge">OFERTA</span>
-            </div>
-            <h3>${subasta.nombre}</h3>
-            <p class="auction-hour">🕒 Comienza a las ${subasta.hora}</p>
-            <div class="auction-price">
-                <div>
-                    <small>Precio original</small>
-                    <del>${subasta.precio_original} €</del>
-                </div>
-                <div>
-                    <small>Precio de ejemplo</small>
-                    <strong>${subasta.precio_actual} €</strong>
-                </div>
-            </div>
-            <button type="button" class="auction-btn">Próximamente</button>
-        </article>`;
-}
-
 document.addEventListener("DOMContentLoaded", () => {
 
     // Opciones del desplegable de deportes
@@ -75,8 +53,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // Tarjetas
     document.getElementById("instalaciones-grid").innerHTML =
         INSTALACIONES.map(crearTarjetaInstalacion).join("");
-    document.getElementById("subastas-grid").innerHTML =
-        SUBASTAS.map(crearTarjetaSubasta).join("");
 
     // Año del pie de página
     document.getElementById("anio").textContent = hoy.getFullYear();
