@@ -27,10 +27,8 @@
                 <a href="#subastas">Subastas 🔥</a>
             </nav>
 
-            <div class="nav-actions">
-                <button type="button" class="login-btn">Iniciar sesión</button>
-                <button type="button" class="register-btn">Registrarse</button>
-            </div>
+            <!-- Se rellena desde js/auth.js según haya sesión o no -->
+            <div class="nav-actions" id="nav-actions"></div>
 
         </div>
     </header>
@@ -142,26 +140,170 @@
 
         <div class="container">
 
-            <div class="section-header">
+            <div class="section-header auctions-header">
 
-                <span class="section-label">🔥 OFERTAS DE ÚLTIMA HORA</span>
+                <div>
+                    <span class="section-label">🔥 SUBASTAS ENTRE USUARIOS</span>
 
-                <h2>Juega más. Paga menos.</h2>
+                    <h2>Juega más. Paga menos.</h2>
 
-                <p>
-                    Cuando una pista esté libre a pocas horas
-                    de comenzar, podrá entrar en nuestra
-                    subasta de precio descendente.
-                </p>
+                    <p>
+                        ¿No puedes ir a tu reserva? Súbela a subasta y deja que
+                        otros jugadores pujen por ella. ¿Buscas pista de última hora?
+                        Puja y llévatela al mejor precio.
+                    </p>
+                </div>
+
+                <button type="button" class="hero-btn create-auction-btn" id="btn-crear-subasta">
+                    + Crear subasta
+                </button>
 
             </div>
 
-            <!-- Las tarjetas se generan desde js/data.js -->
+            <div class="auction-filters" role="group" aria-label="Filtrar subastas">
+                <button type="button" class="auction-filter active" data-filtro="activas" aria-pressed="true">
+                    En curso <span class="filter-count" id="contador-activas">0</span>
+                </button>
+                <button type="button" class="auction-filter" data-filtro="finalizadas" aria-pressed="false">Finalizadas</button>
+                <button type="button" class="auction-filter" data-filtro="mias" aria-pressed="false">Mis subastas</button>
+                <button type="button" class="auction-filter" data-filtro="pujas" aria-pressed="false">Mis pujas</button>
+            </div>
+
+            <!-- Las tarjetas se generan desde js/subastas.js -->
             <div class="cards-grid" id="subastas-grid"></div>
+
+            <p id="subastas-vacio" class="empty-results" hidden></p>
 
         </div>
 
     </section>
+
+    <!-- MODAL: LOGIN / REGISTRO -->
+
+    <dialog class="modal" id="auth-modal" aria-labelledby="auth-title">
+        <div class="modal-box">
+            <button type="button" class="modal-close" aria-label="Cerrar">×</button>
+
+            <h2 id="auth-title" class="modal-title">CEUTA<span>PLAY</span></h2>
+
+            <div class="auth-tabs">
+                <button type="button" class="auth-tab active" data-tab="login">Iniciar sesión</button>
+                <button type="button" class="auth-tab" data-tab="registro">Registrarse</button>
+            </div>
+
+            <p class="form-notice" id="auth-notice" hidden></p>
+
+            <form id="login-form" class="modal-form">
+                <label for="login-email">Correo electrónico</label>
+                <input type="email" id="login-email" name="email" autocomplete="email" required>
+
+                <label for="login-password">Contraseña</label>
+                <input type="password" id="login-password" name="password" autocomplete="current-password" required>
+
+                <label class="checkbox">
+                    <input type="checkbox" name="recordar"> Recordarme en este navegador
+                </label>
+
+                <p class="form-error" hidden></p>
+
+                <button type="submit" class="submit-btn">Entrar</button>
+
+                <p class="form-hint">
+                    ¿No tienes cuenta? <button type="button" class="link-btn" data-ir-a="registro">Regístrate</button>
+                </p>
+
+                <div class="demo-box">
+                    <strong>Cuentas de prueba</strong> (contraseña <code>demo1234</code>):<br>
+                    ana@ceutaplay.es · luis@ceutaplay.es · marta@ceutaplay.es
+                </div>
+            </form>
+
+            <form id="register-form" class="modal-form" hidden>
+                <label for="reg-nombre">Nombre</label>
+                <input type="text" id="reg-nombre" name="nombre" autocomplete="name" minlength="2" maxlength="40" required>
+
+                <label for="reg-email">Correo electrónico</label>
+                <input type="email" id="reg-email" name="email" autocomplete="email" required>
+
+                <label for="reg-password">Contraseña (mínimo 6 caracteres)</label>
+                <input type="password" id="reg-password" name="password" autocomplete="new-password" minlength="6" required>
+
+                <label for="reg-password2">Repite la contraseña</label>
+                <input type="password" id="reg-password2" name="password2" autocomplete="new-password" minlength="6" required>
+
+                <p class="form-error" hidden></p>
+
+                <button type="submit" class="submit-btn">Crear cuenta</button>
+
+                <p class="form-hint">
+                    ¿Ya tienes cuenta? <button type="button" class="link-btn" data-ir-a="login">Inicia sesión</button>
+                </p>
+            </form>
+        </div>
+    </dialog>
+
+    <!-- MODAL: PUJAR -->
+
+    <dialog class="modal" id="bid-modal" aria-label="Pujar en la subasta">
+        <div class="modal-box">
+            <button type="button" class="modal-close" aria-label="Cerrar">×</button>
+            <!-- Contenido generado desde js/subastas.js -->
+            <div id="bid-body"></div>
+        </div>
+    </dialog>
+
+    <!-- MODAL: CREAR SUBASTA -->
+
+    <dialog class="modal" id="create-modal" aria-labelledby="create-title">
+        <div class="modal-box">
+            <button type="button" class="modal-close" aria-label="Cerrar">×</button>
+
+            <span class="section-label">🔥 NUEVA SUBASTA</span>
+            <h2 id="create-title">Subasta tu reserva</h2>
+
+            <form id="create-form" class="modal-form">
+                <label for="crear-instalacion">Instalación</label>
+                <select id="crear-instalacion" name="instalacion" required></select>
+
+                <div class="form-row">
+                    <div>
+                        <label for="crear-fecha">Fecha del partido</label>
+                        <input type="date" id="crear-fecha" name="fecha" required>
+                    </div>
+                    <div>
+                        <label for="crear-hora">Hora</label>
+                        <select id="crear-hora" name="hora" required></select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div>
+                        <label for="crear-precio">Precio de salida (€)</label>
+                        <input type="number" id="crear-precio" name="precio" min="1" step="1" required>
+                    </div>
+                    <div>
+                        <label for="crear-incremento">Incremento mínimo</label>
+                        <select id="crear-incremento" name="incremento">
+                            <option value="1">1 €</option>
+                            <option value="2">2 €</option>
+                            <option value="5">5 €</option>
+                        </select>
+                    </div>
+                </div>
+
+                <label for="crear-duracion">Duración de la subasta</label>
+                <select id="crear-duracion" name="duracion" required></select>
+
+                <label for="crear-descripcion">Descripción (opcional)</label>
+                <textarea id="crear-descripcion" name="descripcion" rows="2" maxlength="200"
+                          placeholder="Ej.: No puedo ir, incluye alquiler de palas."></textarea>
+
+                <p class="form-error" hidden></p>
+
+                <button type="submit" class="submit-btn">Publicar subasta</button>
+            </form>
+        </div>
+    </dialog>
 
     <!-- PIE DE PÁGINA -->
 
@@ -174,14 +316,22 @@
                 <p>Tu deporte, tu pista, tu momento.</p>
             </div>
 
-            <p>© <span id="anio"></span> CeutaPlay</p>
+            <div class="footer-right">
+                <p>© <span id="anio"></span> CeutaPlay</p>
+                <button type="button" class="link-btn footer-reset" id="reset-demo">
+                    Restablecer datos de ejemplo
+                </button>
+            </div>
 
         </div>
 
     </footer>
 
     <script src="js/data.js"></script>
+    <script src="js/store.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/subastas.js"></script>
 
 </body>
 </html>
