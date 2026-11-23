@@ -93,6 +93,24 @@ También se puede lanzar a mano: **Actions → Desplegar en GitHub Pages → Run
 
 ---
 
+## 🌿 Ver cada rama publicada
+
+Cada rama se publica en su propia carpeta del mismo sitio:
+
+| Rama    | Enlace                                               |
+|---------|------------------------------------------------------|
+| `main`  | <https://jossseluuu.github.io/TrabajoCEGE/>          |
+| `dev`   | <https://jossseluuu.github.io/TrabajoCEGE/dev/>      |
+| `devep` | <https://jossseluuu.github.io/TrabajoCEGE/devep/>    |
+
+Cualquier `push` a una de las tres ramas vuelve a publicar las tres (tarda uno o dos minutos). Detalles:
+
+- El archivo `.github/workflows/deploy.yml` tiene que ser **igual en las tres ramas**. Si se cambia en una, hay que llevar el cambio a las demás.
+- GitHub solo permite desplegar Pages desde `main`, por eso un push a `dev` o `devep` lanza el despliegue "desde main" (en la pestaña *Actions* verás dos ejecuciones: la del aviso y la del despliegue).
+- Para añadir otra rama, añádela en las dos listas de `deploy.yml` (`branches:` y el `for rama in ...`).
+
+---
+
 ## 💻 Verla en local
 
 No hace falta instalar nada. Cualquiera de estas opciones vale:
