@@ -1,5 +1,3 @@
-{% load static %}
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -8,7 +6,8 @@
 
     <title>CeutaPlay | Reserva tu pista</title>
 
-    <link rel="stylesheet" href="{% static 'core/css/styles.css' %}">
+    <!-- Rutas relativas: necesarias para que funcione en https://usuario.github.io/TrabajoGabi/ -->
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 
 <body>
@@ -18,7 +17,7 @@
     <header class="navbar">
         <div class="container nav-content">
 
-            <a href="/" class="logo">
+            <a href="./" class="logo">
                 CEUTA<span>PLAY</span>
             </a>
 
@@ -74,28 +73,17 @@
                 <div class="search-field">
                     <label for="deporte">Deporte</label>
 
+                    <!-- Las opciones de deporte se añaden desde js/data.js -->
                     <select id="deporte" name="deporte">
                         <option value="">Todos los deportes</option>
-
-                        {% for deporte in deportes %}
-                        <option value="{{ deporte.nombre }}">
-                            {{ deporte.nombre }}
-                        </option>
-                        {% endfor %}
                     </select>
                 </div>
 
                 <div class="search-field">
                     <label for="fecha">Fecha</label>
 
-                    <input
-                        type="date"
-                        id="fecha"
-                        name="fecha"
-                        min="{{ fecha_minima }}"
-                        max="{{ fecha_maxima }}"
-                        value="{{ fecha_minima }}"
-                    >
+                    <!-- min, max y value se rellenan desde js/main.js -->
+                    <input type="date" id="fecha" name="fecha">
                 </div>
 
                 <div class="search-field">
@@ -137,56 +125,8 @@
                 <p>Encuentra el lugar perfecto para tu próximo partido.</p>
             </div>
 
-            <div class="cards-grid">
-
-                {% for instalacion in instalaciones %}
-
-                <article
-                    class="card"
-                    data-deporte="{{ instalacion.deporte }}"
-                >
-
-                    <div class="card-image">
-
-                        <img
-                            src="{{ instalacion.imagen }}"
-                            alt="{{ instalacion.nombre }}"
-                        >
-
-                        <span class="card-tag">
-                            {{ instalacion.deporte }}
-                        </span>
-
-                    </div>
-
-                    <div class="card-content">
-
-                        <h3>{{ instalacion.nombre }}</h3>
-
-                        <p class="location">
-                            📍 {{ instalacion.ubicacion }}
-                        </p>
-
-                        <div class="card-footer">
-
-                            <div class="price">
-                                <small>Desde</small>
-                                <strong>{{ instalacion.precio }} €</strong>
-                            </div>
-
-                            <button type="button" class="reserve-btn">
-                                Ver horarios →
-                            </button>
-
-                        </div>
-
-                    </div>
-
-                </article>
-
-                {% endfor %}
-
-            </div>
+            <!-- Las tarjetas se generan desde js/data.js -->
+            <div class="cards-grid" id="instalaciones-grid"></div>
 
             <p id="empty-results" class="empty-results" hidden>
                 No hay instalaciones de ese deporte.
@@ -216,46 +156,8 @@
 
             </div>
 
-            <div class="cards-grid">
-
-                {% for subasta in subastas %}
-
-                <article class="auction-card">
-
-                    <div class="auction-top">
-                        <span class="auction-badge">🔥 DEMOSTRACIÓN</span>
-                        <span class="discount-badge">OFERTA</span>
-                    </div>
-
-                    <h3>{{ subasta.nombre }}</h3>
-
-                    <p class="auction-hour">
-                        🕒 Comienza a las {{ subasta.hora }}
-                    </p>
-
-                    <div class="auction-price">
-
-                        <div>
-                            <small>Precio original</small>
-                            <del>{{ subasta.precio_original }} €</del>
-                        </div>
-
-                        <div>
-                            <small>Precio de ejemplo</small>
-                            <strong>{{ subasta.precio_actual }} €</strong>
-                        </div>
-
-                    </div>
-
-                    <button type="button" class="auction-btn">
-                        Próximamente
-                    </button>
-
-                </article>
-
-                {% endfor %}
-
-            </div>
+            <!-- Las tarjetas se generan desde js/data.js -->
+            <div class="cards-grid" id="subastas-grid"></div>
 
         </div>
 
@@ -272,13 +174,14 @@
                 <p>Tu deporte, tu pista, tu momento.</p>
             </div>
 
-            <p>© {% now "Y" %} CeutaPlay</p>
+            <p>© <span id="anio"></span> CeutaPlay</p>
 
         </div>
 
     </footer>
 
-    <script src="{% static 'core/js/main.js' %}"></script>
+    <script src="js/data.js"></script>
+    <script src="js/main.js"></script>
 
 </body>
 </html>
