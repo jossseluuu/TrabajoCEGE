@@ -1,6 +1,6 @@
 const profilePanel = document.getElementById("profile-panel");
 const profileName = document.getElementById("profile-name");
-const profileNameKey = "ceutaplay-profile-name";
+const profileEmail = document.getElementById("profile-email");
 
 function bookingStart(booking) {
     return `${booking.date}T${booking.time}`;
@@ -44,22 +44,64 @@ function showBookingSummary() {
     showBookingList("past-bookings", past, "Todavía no tienes reservas anteriores.");
 }
 
-window.addEventListener("pageshow", () => {
-    if (sessionStorage.getItem("ceutaplay-demo-session") !== "active") {
+function auctionDescription(auction) {
+    const date = auction.fecha.split("-").reverse().join("/");
+    return `${auction.titulo} · ${date}, ${auction.hora} · ${auction.precioActual} €`;
+}
+
+function showAuctionSummary(usuario) {
+    const auctions = Store.listarSubastas();
+    const created = auctions.filter((auction) => auction.vendedorId === usuario.id);
+    const bidding = auctions.filter((auction) => auction.estado === "activa" &&
+        auction.pujas.some((bid) => bid.usuarioId === usuario.id));
+    const won = auctions.filter((auction) => auction.ganador && auction.ganador.id === usuario.id);
+
+    document.getElementById("auctions-created").textContent = created.length;
+    document.getElementById("auctions-bidding").textContent = bidding.length;
+    document.getElementById("auctions-won").textContent = won.length;
+
+    const biddingTexts = bidding.map((auction) => {
+        const winning = auction.mejorPuja.usuarioId === usuario.id;
+        return `${auctionDescription(auction)} · ${winning ? "🏆 vas ganando" : "⚠️ te han superado"}`;
+    });
+    showList("bidding-list", biddingTexts, "No estás pujando en ninguna subasta.");
+    showList("won-list", won.map(auctionDescription), "Todavía no has ganado ninguna subasta.");
+}
+
+function showList(id, texts, emptyMessage) {
+    const items = (texts.length ? texts : [emptyMessage]).map((text) => {
+        const item = document.createElement("li");
+        item.textContent = text;
+        return item;
+    });
+    document.getElementById(id).replaceChildren(...items);
+}
+
+function showProfile() {
+    if (!requireLogin()) {
         profilePanel.hidden = true;
-        window.location.replace("login.html");
         return;
     }
-
-    profileName.textContent = sessionStorage.getItem(profileNameKey) || "";
-    profileName.hidden = !profileName.textContent;
+    const usuario = Store.usuarioActual();
+    profileName.textContent = `Hola, ${usuario.nombre}`;
+    profileName.hidden = false;
+    profileEmail.textContent = usuario.email;
     showBookingSummary();
+    showAuctionSummary(usuario);
     profilePanel.hidden = false;
+}
+
+document.getElementById("logout-btn").addEventListener("click", async () => {
+    await Store.cerrarSesion();
+    location.replace("index.html");
 });
 
-window.addEventListener("storage", (event) => {
-    if (!profilePanel.hidden && (event.key === bookingStorageKey || event.key === null)) {
-        showBookingSummary();
-    }
+Store.inicializar().then(() => {
+    showProfile();
+    window.addEventListener("pageshow", showProfile);
 });
+
+// Si cambian reservas, subastas o la sesión (en otro dispositivo o pestaña), se actualiza
+document.addEventListener("datos-cambiados", showProfile);
+document.addEventListener("sesion-cambiada", showProfile);
 

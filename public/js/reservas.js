@@ -36,7 +36,10 @@ function updateCourtAvailability() {
     const selectedCourt = form.elements.namedItem("court")?.value;
     const hasSlot = Boolean(date && times.includes(time));
     const futureSlot = hasSlot && `${date}T${time}` > ceutaDateTime();
-    const reserved = futureSlot ? reservedCourts(getReservations(), facility.id, date, time) : new Set();
+    // Pistas ocupadas por cualquier usuario (en el servidor, si está conectado)
+    const reserved = futureSlot
+        ? new Set(facility.pistas.filter((court) => Store.pistaOcupada(facility.id, court, date, time)))
+        : new Set();
     const available = futureSlot ? facility.pistas.filter((court) => !reserved.has(court)) : [];
     const selected = available.includes(selectedCourt) ? selectedCourt : available[0];
 
@@ -79,11 +82,15 @@ function showReservations() {
         cancel.type = "button";
         cancel.className = "login-btn";
         cancel.textContent = "Cancelar";
-        cancel.addEventListener("click", () => {
-            saveReservations(getReservations().filter(({ id }) => id !== reservation.id));
-            showReservations();
-            updateCourtAvailability();
-            statusMessage.textContent = "Reserva de prueba cancelada.";
+        cancel.addEventListener("click", async () => {
+            cancel.disabled = true;
+            try {
+                await Store.cancelarReserva(reservation.id);
+                statusMessage.textContent = "Reserva cancelada.";
+            } catch (error) {
+                statusMessage.textContent = error.message;
+                cancel.disabled = false;
+            }
         });
         item.append(cancel);
         reservationList.append(item);
@@ -125,13 +132,7 @@ facilitySelect.addEventListener("change", updateFacility);
 dateInput.addEventListener("change", updateCourtAvailability);
 timeSelect.addEventListener("change", updateCourtAvailability);
 window.addEventListener("pageshow", updateCourtAvailability);
-window.addEventListener("storage", (event) => {
-    if (event.key === bookingStorageKey || event.key === null) {
-        showReservations();
-        updateCourtAvailability();
-    }
-});
-form.addEventListener("submit", (event) => {
+form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const facility = facilities.find(({ id }) => id === Number(facilitySelect.value));
     const court = new FormData(form).get("court");
@@ -143,18 +144,33 @@ form.addEventListener("submit", (event) => {
         return;
     }
 
-    const reservations = getReservations();
-    if (reservedCourts(reservations, facility.id, date, time).has(court)) {
-        updateCourtAvailability();
+    if (getReservations().some((booking) => booking.facility === facility.id && booking.court === court && booking.date === date && booking.time === time)) {
         statusMessage.textContent = "Ya has guardado esa pista para ese turno.";
         return;
     }
 
-    reservations.push({ id: crypto.randomUUID(), facility: facility.id, court, date, time });
-    saveReservations(reservations);
-    showReservations();
-    updateCourtAvailability();
-    statusMessage.textContent = "Reserva de prueba guardada en este navegador.";
+    const submit = form.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    try {
+        // El servidor comprueba que nadie más tenga esa pista en ese turno
+        await Store.reservar({ facility: facility.id, court, date, time });
+        statusMessage.textContent = "Reserva guardada.";
+    } catch (error) {
+        statusMessage.textContent = error.message;
+    } finally {
+        updateCourtAvailability();
+    }
 });
 
-showReservations();
+// Reservas hechas desde otro dispositivo o pestaña
+document.addEventListener("datos-cambiados", () => {
+    showReservations();
+    updateCourtAvailability();
+});
+
+// Hay que haber iniciado sesión para reservar
+Store.inicializar().then(() => {
+    if (!requireLogin()) return;
+    showReservations();
+    updateCourtAvailability();
+});
