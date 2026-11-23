@@ -9,22 +9,35 @@ function fechaISO(fecha) {
 }
 
 function crearTarjetaInstalacion(instalacion) {
+    const etiqueta = `<span class="card-tag">${instalacion.deporte}</span>`;
+    const imagen = instalacion.imagen
+        ? `<div class="card-image"><img src="${instalacion.imagen}" alt="${instalacion.imagenAlt || ""}">${etiqueta}</div>`
+        : `<div class="card-image card-image-placeholder">Foto pendiente${etiqueta}</div>`;
+    const credito = instalacion.fuenteImagen
+        ? `<p class="photo-credit"><a href="${instalacion.fuenteImagen}">${instalacion.creditoImagen}</a></p>`
+        : instalacion.creditoImagen ? `<p class="photo-credit">${instalacion.creditoImagen}</p>` : "";
+    const precio = instalacion.precio == null ? "" : `
+        <div class="price">
+            <small>Desde</small>
+            <strong>${instalacion.precio} €</strong>
+        </div>`;
+    const reserva = instalacion.pistas
+        ? `<div class="card-footer"><a class="reserve-btn" href="reservas.html?pista=${instalacion.id}">Reservar pádel</a></div>`
+        : "";
+    const accion = instalacion.informacion
+        ? `<a class="reserve-btn" href="${instalacion.informacion}">Información de la instalación</a>`
+        : `<button type="button" class="reserve-btn">Ver horarios →</button>`;
+    const pie = instalacion.informacion || precio ? `<div class="card-footer">${precio}${accion}</div>` : "";
+
     return `
         <article class="card" data-deporte="${instalacion.deporte}">
-            <div class="card-image">
-                <img src="${instalacion.imagen}" alt="${instalacion.nombre}">
-                <span class="card-tag">${instalacion.deporte}</span>
-            </div>
+            ${imagen}
             <div class="card-content">
+                ${credito}
                 <h3>${instalacion.nombre}</h3>
                 <p class="location">📍 ${instalacion.ubicacion}</p>
-                <div class="card-footer">
-                    <div class="price">
-                        <small>Desde</small>
-                        <strong>${instalacion.precio} €</strong>
-                    </div>
-                    <button type="button" class="reserve-btn">Ver horarios →</button>
-                </div>
+                ${instalacion.detalle ? `<p class="location">${instalacion.detalle}</p>` : ""}
+                ${reserva || pie}
             </div>
         </article>`;
 }
@@ -107,4 +120,25 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+});
+
+const loginLink = document.querySelector('.nav-actions a[href="login.html"]');
+const registerLink = document.querySelector('.nav-actions a[href="registro.html"]');
+const profileLink = document.getElementById("profile-link");
+const logoutButton = document.getElementById("logout-btn");
+
+function updateDemoSession() {
+    const signedIn = sessionStorage.getItem("ceutaplay-demo-session") === "active";
+    loginLink.hidden = signedIn;
+    registerLink.hidden = signedIn;
+    profileLink.hidden = !signedIn;
+    logoutButton.hidden = !signedIn;
+}
+
+window.addEventListener("pageshow", updateDemoSession);
+logoutButton.addEventListener("click", () => {
+    sessionStorage.removeItem("ceutaplay-demo-session");
+    sessionStorage.removeItem("ceutaplay-profile-name");
+    updateDemoSession();
+    loginLink.focus();
 });
