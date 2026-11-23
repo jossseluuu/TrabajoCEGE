@@ -89,6 +89,13 @@ nav a:hover {
     color: var(--primary);
 }
 
+nav a[aria-current="page"] {
+    box-shadow: 0 0 0 7px #eff6ff;
+    border-radius: 4px;
+    background: #eff6ff;
+    color: var(--primary-dark);
+}
+
 .nav-actions {
     display: flex;
     align-items: center;
@@ -212,6 +219,164 @@ nav a:hover {
 .reservation-page {
     max-width: 1080px;
     padding-block: clamp(28px, 6vw, 64px);
+}
+
+.map-page {
+    padding-block: clamp(28px, 5vw, 56px);
+}
+
+.map-page-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding: clamp(22px, 4vw, 36px);
+    border: 1px solid #dbeafe;
+    border-radius: 18px;
+    background: linear-gradient(110deg, #eff6ff, var(--white));
+}
+
+.map-page-heading .reservation-heading {
+    margin: 0;
+}
+
+.map-catalogue-link,
+.map-locate-btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 8px 12px;
+    border: 1px solid #bfdbfe;
+    border-radius: 9px;
+    background: var(--white);
+    color: var(--primary-dark);
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.map-catalogue-link:hover,
+.map-locate-btn:hover {
+    background: #dbeafe;
+}
+
+.facility-map-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(290px, 365px);
+    gap: 20px;
+    align-items: start;
+}
+
+.facility-map-layout > section {
+    grid-column: 2;
+}
+
+.facility-map-layout > [hidden] + section {
+    grid-column: 1 / -1;
+}
+
+.facility-map {
+    height: clamp(380px, 65vh, 650px);
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    background: #eff6ff;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+    isolation: isolate;
+    scroll-margin-top: 150px;
+}
+
+.facility-marker {
+    background: var(--primary-dark);
+    border: 3px solid var(--white);
+    border-radius: 50%;
+    box-shadow: 0 1px 5px #0f172a90;
+}
+
+.facility-marker-approximate {
+    background: #92400e;
+}
+
+.map-directory-heading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.map-directory-heading span {
+    padding: 4px 8px;
+    border-radius: 8px;
+    background: #eff6ff;
+    color: var(--primary-dark);
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.map-locations {
+    display: grid;
+    gap: 8px;
+    list-style: none;
+}
+
+.map-locations li {
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: var(--light);
+}
+
+.map-locations .map-location-selected {
+    border-color: #93c5fd;
+    background: #eff6ff;
+}
+
+.map-locations h3 {
+    font-size: 1rem;
+}
+
+.map-locations p {
+    margin-top: 4px;
+    font-size: 0.875rem;
+}
+
+.map-popup h3 {
+    font-size: 1rem;
+}
+
+.map-location-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+    margin-top: 10px;
+}
+
+.map-location-actions a {
+    color: var(--primary-dark);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.map-catalogue-link:focus-visible,
+.map-location-actions :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 3px;
+}
+
+@media (max-width: 800px) {
+    .facility-map-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .facility-map-layout > section {
+        grid-column: 1;
+    }
+
+    .facility-map {
+        height: clamp(340px, 58vh, 480px);
+    }
 }
 
 .reservation-heading {
