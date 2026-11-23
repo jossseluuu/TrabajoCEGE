@@ -4,8 +4,9 @@
 
 function crearTarjetaInstalacion(instalacion) {
     const etiqueta = `<span class="card-tag">${instalacion.deporte}</span>`;
+    const imagenAlternativa = instalacion.imagenAlternativa ? ` data-image-fallback="${instalacion.imagenAlternativa}"` : "";
     const imagen = instalacion.imagen
-        ? `<div class="card-image"><img src="${instalacion.imagen}" alt="${instalacion.imagenAlt || ""}">${etiqueta}</div>`
+        ? `<div class="card-image"><img src="${instalacion.imagen}" alt="${instalacion.imagenAlt || ""}"${imagenAlternativa}>${etiqueta}</div>`
         : `<div class="card-image card-image-placeholder">Foto pendiente${etiqueta}</div>`;
     const credito = instalacion.fuenteImagen
         ? `<p class="photo-credit"><a href="${instalacion.fuenteImagen}">${instalacion.creditoImagen}</a></p>`
@@ -16,7 +17,16 @@ function crearTarjetaInstalacion(instalacion) {
             <strong>${instalacion.precio} €</strong>
         </div>`;
     const reserva = instalacion.pistas
-        ? `<div class="card-footer"><a class="reserve-btn" href="reservas.html?pista=${instalacion.id}">Reservar pádel</a></div>`
+        ? `<div class="card-footer booking-card-footer">
+            <div class="price">
+                <small>Precio de prueba</small>
+                <strong>${formatoEuros.format(instalacion.precioPrueba)} / hora</strong>
+            </div>
+            <div class="booking-card-actions">
+                <a class="reserve-btn" href="reservas.html?pista=${instalacion.id}">Reservar ${instalacion.deporte.toLowerCase()}</a>
+                <a class="login-btn" href="reservas.html?pista=${instalacion.id}#ubicacion">Ver mapa</a>
+            </div>
+        </div>`
         : "";
     const accion = instalacion.informacion
         ? `<a class="reserve-btn" href="${instalacion.informacion}">Información de la instalación</a>`
@@ -57,8 +67,21 @@ document.addEventListener("DOMContentLoaded", () => {
     inputFecha.value = fechaISO(hoy);
 
     // Tarjetas
-    document.getElementById("instalaciones-grid").innerHTML =
-        INSTALACIONES.map(crearTarjetaInstalacion).join("");
+    const instalacionesGrid = document.getElementById("instalaciones-grid");
+    instalacionesGrid.addEventListener("error", (event) => {
+        const image = event.target;
+        if (!(image instanceof HTMLImageElement)) return;
+        if (image.dataset.imageFallback) {
+            image.src = image.dataset.imageFallback;
+            delete image.dataset.imageFallback;
+            return;
+        }
+
+        const frame = image.parentElement;
+        frame.classList.add("card-image-placeholder");
+        image.replaceWith(document.createTextNode("Foto no disponible"));
+    }, true);
+    instalacionesGrid.innerHTML = INSTALACIONES.map(crearTarjetaInstalacion).join("");
 
     // Año del pie de página
     document.getElementById("anio").textContent = hoy.getFullYear();
