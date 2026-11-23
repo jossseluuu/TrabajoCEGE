@@ -2,7 +2,7 @@
 
 Web de reserva de pistas deportivas en Ceuta (trabajo de CEGE). Es una web **estática** (HTML + CSS + JavaScript) que se publica automáticamente en **GitHub Pages** mediante **GitHub Actions**.
 
-🌐 **Web publicada:** <https://ana2005ugr.github.io/TrabajoGabi/>
+🌐 **Web publicada:** <https://jossseluuu.github.io/TrabajoCEGE/>
 
 ---
 
@@ -90,4 +90,4 @@ git push
 
 y GitHub Actions publica la nueva versión automáticamente.
 
-> **Importante:** usa siempre **rutas relativas** (`css/styles.css`, `js/main.js`, `img/foto.png`) y no rutas que empiecen por `/`. La web se sirve en `/TrabajoGabi/`, así que una ruta como `/css/styles.css` no funcionaría en GitHub Pages.
+> **Importante:** usa siempre **rutas relativas** (`css/styles.css`, `js/main.js`, `img/foto.png`) y no rutas que empiecen por `/`. La web se sirve en `/TrabajoCEGE/`, así que una ruta como `/css/styles.css` no funcionaría en GitHub Pages.
