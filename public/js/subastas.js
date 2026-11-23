@@ -211,6 +211,17 @@ const Subastas = (() => {
         const usuario = Store.usuarioActual();
         if (!s) return;
 
+        // Se repinta cada vez que llega un cambio del servidor: hay que conservar
+        // lo que el usuario estaba escribiendo y el último error (si el precio
+        // no ha cambiado entretanto)
+        const formAnterior = $("bid-form");
+        const anterior = formAnterior ? {
+            precio: Number(formAnterior.dataset.precio),
+            cantidad: $("bid-cantidad").dataset.editado ? $("bid-cantidad").value : null,
+            error: formAnterior.querySelector(".form-error").hidden ? "" : formAnterior.querySelector(".form-error").textContent,
+            foco: document.activeElement === $("bid-cantidad"),
+        } : null;
+
         const historial = s.pujas.length
             ? s.pujas.map((p, i) => {
                 const autor = Store.getUsuario(p.usuarioId);
@@ -274,9 +285,28 @@ const Subastas = (() => {
         const form = $("bid-form");
         if (!form) return;
 
+        const input = $("bid-cantidad");
+        form.dataset.precio = s.precioActual;
+        input.addEventListener("input", () => (input.dataset.editado = "1"));
         form.querySelectorAll("[data-puja]").forEach((b) => {
-            b.addEventListener("click", () => ($("bid-cantidad").value = b.dataset.puja));
+            b.addEventListener("click", () => {
+                input.value = b.dataset.puja;
+                input.dataset.editado = "1";
+            });
         });
+
+        if (anterior) {
+            if (anterior.cantidad !== null) {
+                input.value = anterior.cantidad;
+                input.dataset.editado = "1";
+            }
+            if (anterior.error && anterior.precio === s.precioActual) {
+                const e = form.querySelector(".form-error");
+                e.textContent = anterior.error;
+                e.hidden = false;
+            }
+            if (anterior.foco) input.focus();
+        }
 
         form.addEventListener("submit", async (event) => {
             event.preventDefault();

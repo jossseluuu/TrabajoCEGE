@@ -13,6 +13,6 @@
 // propios datos).
 
 const CONFIG_SUPABASE = {
-    url: "",
-    anonKey: "",
+    url: "https://cprjsotawqzhpsjdhkmm.supabase.co",
+    anonKey: "sb_publishable_X6FImLktdWk4qKZ9pw6vXg_nRLrjELa",
 };
