@@ -1,0 +1,284 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>CeutaPlay | Reserva tu pista</title>
+
+    <link rel="stylesheet" href="{% static 'core/css/styles.css' %}">
+</head>
+
+<body>
+
+    <!-- MENÚ -->
+
+    <header class="navbar">
+        <div class="container nav-content">
+
+            <a href="/" class="logo">
+                CEUTA<span>PLAY</span>
+            </a>
+
+            <nav>
+                <a href="#inicio">Inicio</a>
+                <a href="#instalaciones">Instalaciones</a>
+                <a href="#subastas">Subastas 🔥</a>
+            </nav>
+
+            <div class="nav-actions">
+                <button type="button" class="login-btn">Iniciar sesión</button>
+                <button type="button" class="register-btn">Registrarse</button>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- PORTADA -->
+
+    <section class="hero" id="inicio">
+
+        <div class="container hero-content">
+
+            <span class="badge">🏆 TU DEPORTE EN CEUTA</span>
+
+            <h1>
+                Tu próxima partida<br>
+                empieza <span>aquí.</span>
+            </h1>
+
+            <p>
+                Encuentra las mejores pistas deportivas de Ceuta.
+                Reserva fácilmente y descubre ofertas exclusivas
+                de última hora.
+            </p>
+
+            <a href="#instalaciones" class="hero-btn">
+                Explorar instalaciones →
+            </a>
+
+        </div>
+
+    </section>
+
+    <!-- BUSCADOR -->
+
+    <section class="search-section">
+
+        <div class="container">
+
+            <form class="search-box" id="search-form">
+
+                <div class="search-field">
+                    <label for="deporte">Deporte</label>
+
+                    <select id="deporte" name="deporte">
+                        <option value="">Todos los deportes</option>
+
+                        {% for deporte in deportes %}
+                        <option value="{{ deporte.nombre }}">
+                            {{ deporte.nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="search-field">
+                    <label for="fecha">Fecha</label>
+
+                    <input
+                        type="date"
+                        id="fecha"
+                        name="fecha"
+                        min="{{ fecha_minima }}"
+                        max="{{ fecha_maxima }}"
+                        value="{{ fecha_minima }}"
+                    >
+                </div>
+
+                <div class="search-field">
+                    <label for="hora">Hora</label>
+
+                    <select id="hora" name="hora">
+                        <option value="">Cualquier hora</option>
+                        <option value="09:00">09:00</option>
+                        <option value="10:00">10:00</option>
+                        <option value="11:00">11:00</option>
+                        <option value="12:00">12:00</option>
+                        <option value="17:00">17:00</option>
+                        <option value="18:00">18:00</option>
+                        <option value="19:00">19:00</option>
+                        <option value="20:00">20:00</option>
+                        <option value="21:00">21:00</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="search-btn">
+                    🔍 Buscar pistas
+                </button>
+
+            </form>
+
+        </div>
+
+    </section>
+
+    <!-- INSTALACIONES -->
+
+    <section class="section" id="instalaciones">
+
+        <div class="container">
+
+            <div class="section-header">
+                <span class="section-label">DESCUBRE CEUTA</span>
+                <h2>Instalaciones deportivas</h2>
+                <p>Encuentra el lugar perfecto para tu próximo partido.</p>
+            </div>
+
+            <div class="cards-grid">
+
+                {% for instalacion in instalaciones %}
+
+                <article
+                    class="card"
+                    data-deporte="{{ instalacion.deporte }}"
+                >
+
+                    <div class="card-image">
+
+                        <img
+                            src="{{ instalacion.imagen }}"
+                            alt="{{ instalacion.nombre }}"
+                        >
+
+                        <span class="card-tag">
+                            {{ instalacion.deporte }}
+                        </span>
+
+                    </div>
+
+                    <div class="card-content">
+
+                        <h3>{{ instalacion.nombre }}</h3>
+
+                        <p class="location">
+                            📍 {{ instalacion.ubicacion }}
+                        </p>
+
+                        <div class="card-footer">
+
+                            <div class="price">
+                                <small>Desde</small>
+                                <strong>{{ instalacion.precio }} €</strong>
+                            </div>
+
+                            <button type="button" class="reserve-btn">
+                                Ver horarios →
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </article>
+
+                {% endfor %}
+
+            </div>
+
+            <p id="empty-results" class="empty-results" hidden>
+                No hay instalaciones de ese deporte.
+            </p>
+
+        </div>
+
+    </section>
+
+    <!-- SUBASTAS -->
+
+    <section class="section auctions-section" id="subastas">
+
+        <div class="container">
+
+            <div class="section-header">
+
+                <span class="section-label">🔥 OFERTAS DE ÚLTIMA HORA</span>
+
+                <h2>Juega más. Paga menos.</h2>
+
+                <p>
+                    Cuando una pista esté libre a pocas horas
+                    de comenzar, podrá entrar en nuestra
+                    subasta de precio descendente.
+                </p>
+
+            </div>
+
+            <div class="cards-grid">
+
+                {% for subasta in subastas %}
+
+                <article class="auction-card">
+
+                    <div class="auction-top">
+                        <span class="auction-badge">🔥 DEMOSTRACIÓN</span>
+                        <span class="discount-badge">OFERTA</span>
+                    </div>
+
+                    <h3>{{ subasta.nombre }}</h3>
+
+                    <p class="auction-hour">
+                        🕒 Comienza a las {{ subasta.hora }}
+                    </p>
+
+                    <div class="auction-price">
+
+                        <div>
+                            <small>Precio original</small>
+                            <del>{{ subasta.precio_original }} €</del>
+                        </div>
+
+                        <div>
+                            <small>Precio de ejemplo</small>
+                            <strong>{{ subasta.precio_actual }} €</strong>
+                        </div>
+
+                    </div>
+
+                    <button type="button" class="auction-btn">
+                        Próximamente
+                    </button>
+
+                </article>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- PIE DE PÁGINA -->
+
+    <footer class="footer">
+
+        <div class="container footer-content">
+
+            <div>
+                <h2>CEUTA<span>PLAY</span></h2>
+                <p>Tu deporte, tu pista, tu momento.</p>
+            </div>
+
+            <p>© {% now "Y" %} CeutaPlay</p>
+
+        </div>
+
+    </footer>
+
+    <script src="{% static 'core/js/main.js' %}"></script>
+
+</body>
+</html>
