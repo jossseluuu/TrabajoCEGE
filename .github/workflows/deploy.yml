@@ -1,39 +1,80 @@
 name: Desplegar en GitHub Pages
 
+# Publica cada rama en su propia carpeta del mismo sitio:
+#   main  -> https://jossseluuu.github.io/TrabajoCEGE/
+#   dev   -> https://jossseluuu.github.io/TrabajoCEGE/dev/
+#   devep -> https://jossseluuu.github.io/TrabajoCEGE/devep/
+#
+# GitHub solo deja desplegar en Pages desde main, así que un push a dev o devep
+# no despliega directamente: lanza este mismo workflow sobre main, que descarga
+# las tres ramas y publica todo junto.
+#
+# IMPORTANTE: este archivo tiene que estar igual en las tres ramas.
+
 on:
-  # Se publica automáticamente con cada push a main
   push:
-    branches: [main]
-  # Y también se puede lanzar a mano desde la pestaña Actions
+    branches: [main, dev, devep]
+  # También se puede lanzar a mano desde la pestaña Actions
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-# Solo un despliegue a la vez; no cancela uno que ya esté en curso
-concurrency:
-  group: pages
-  cancel-in-progress: false
 
 jobs:
-  deploy:
+  # Push a dev o devep: pide un despliegue desde main
+  avisar:
+    if: github.ref != 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Lanzar el despliegue desde main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yml --repo "$GITHUB_REPOSITORY" --ref main
+
+  # Push a main o lanzamiento manual: construye y publica las tres ramas
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    # Solo un despliegue a la vez; no cancela uno que ya esté en curso
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Descargar el código
+      - name: Descargar el código (todas las ramas)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Juntar la carpeta public/ de cada rama
+        run: |
+          mkdir -p _site
+          for rama in main dev devep; do
+            if ! git rev-parse --verify --quiet "origin/$rama" > /dev/null; then
+              echo "La rama $rama no existe, se omite."
+              continue
+            fi
+            if [ "$rama" = "main" ]; then destino="_site"; else destino="_site/$rama"; fi
+            mkdir -p "$destino"
+            git archive "origin/$rama" public | tar -x --strip-components=1 -C "$destino"
+            echo "✔ $rama -> /$( [ "$rama" = main ] || echo "$rama/" )"
+          done
 
       - name: Configurar Pages
         uses: actions/configure-pages@v5
 
-      - name: Subir la carpeta public/
+      - name: Subir la web
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./public
+          path: ./_site
 
       - name: Publicar
         id: deployment
