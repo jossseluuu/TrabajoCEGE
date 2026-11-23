@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi perfil | CeutaPlay</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="js/data.js" defer></script>
+    <script src="js/booking-storage.js" defer></script>
+    <script src="js/perfil.js" defer></script>
+</head>
+<body>
+    <header class="navbar">
+        <div class="container nav-content">
+            <a href="index.html" class="logo">CEUTA<span>PLAY</span></a>
+            <a href="index.html" class="login-btn">Volver al inicio</a>
+        </div>
+    </header>
+    <main class="login-page">
+        <section class="login-panel profile-panel" aria-labelledby="profile-title" id="profile-panel" hidden>
+            <h1 id="profile-title">Mi perfil</h1>
+            <p id="profile-name" hidden></p>
+            <section class="profile-bookings" aria-labelledby="bookings-title">
+                <div class="profile-bookings-header">
+                    <h2 id="bookings-title">Mis reservas de pádel</h2>
+                    <a href="reservas.html" class="register-btn">Reservar pádel</a>
+                </div>
+                <p>Reservas de prueba guardadas en este navegador.</p>
+                <dl class="profile-stats">
+                    <div><dt>Activas</dt><dd id="active-count">0</dd></div>
+                    <div><dt>Anteriores</dt><dd id="past-count">0</dd></div>
+                    <div><dt>Total</dt><dd id="total-count">0</dd></div>
+                </dl>
+                <p><strong>Próxima partida</strong> <span id="next-booking"></span></p>
+                <div class="profile-booking-lists">
+                    <section aria-labelledby="active-title">
+                        <h3 id="active-title">Reservas activas</h3>
+                        <ul id="active-bookings"></ul>
+                    </section>
+                    <section aria-labelledby="past-title">
+                        <h3 id="past-title">Reservas anteriores</h3>
+                        <ul id="past-bookings"></ul>
+                    </section>
+                </div>
+            </section>
+        </section>
+        <noscript><p>Activa JavaScript para abrir tu perfil.</p></noscript>
+    </main>
+</body>
+</html>
