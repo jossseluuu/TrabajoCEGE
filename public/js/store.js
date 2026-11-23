@@ -11,10 +11,14 @@
 
 const Store = (() => {
 
+    // Cada versión publicada (/TrabajoCEGE/, /TrabajoCEGE/dev/, /TrabajoCEGE/devep/)
+    // comparte dominio y por tanto localStorage. Se añade la carpeta a la clave
+    // para que cada rama tenga sus propios usuarios y subastas.
+    const CARPETA = location.pathname.replace(/[^/]*$/, "");
     const KEYS = {
-        usuarios: "cp_usuarios",
-        subastas: "cp_subastas",
-        sesion: "cp_sesion",
+        usuarios: `cp_usuarios:${CARPETA}`,
+        subastas: `cp_subastas:${CARPETA}`,
+        sesion: `cp_sesion:${CARPETA}`,
     };
 
     const MINUTO = 60 * 1000;
