@@ -31,51 +31,79 @@ El código de Django sigue en el historial de git (commit `fb97ffb`) por si en e
 TrabajoGabi/
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml     ← workflow que publica la web en GitHub Pages
-├── public/                ← TODO lo que hay aquí es lo que se publica
-│   ├── index.html         ← página principal
+│       └── deploy.yml        ← publica main, dev y devep en GitHub Pages
+├── supabase/
+│   └── schema.sql            ← base de datos del servidor (pegar en Supabase)
+├── public/                   ← TODO lo que hay aquí es lo que se publica
+│   ├── index.html            ← página principal (instalaciones + subastas)
+│   ├── login.html            ← iniciar sesión
+│   ├── registro.html         ← crear cuenta
+│   ├── perfil.html           ← mis reservas y mis subastas
+│   ├── reservas.html         ← reservar pistas de pádel
+│   ├── img/
 │   ├── css/
 │   │   └── styles.css
 │   └── js/
-│       ├── data.js        ← deportes, instalaciones, usuarios y subastas de ejemplo (editar aquí)
-│       ├── store.js       ← "base de datos": usuarios, sesión y subastas (localStorage)
-│       ├── main.js        ← pinta las instalaciones y gestiona el buscador
-│       ├── auth.js        ← login, registro y menú de usuario
-│       └── subastas.js    ← subastas entre usuarios: listado, crear, pujar, cuenta atrás
+│       ├── config.js         ← URL y clave del servidor (Supabase)
+│       ├── data.js           ← deportes, instalaciones y datos de ejemplo (editar aquí)
+│       ├── store.js          ← capa de datos: cuentas, subastas, pujas y reservas
+│       ├── main.js           ← pinta las instalaciones y gestiona el buscador
+│       ├── auth.js           ← ventana de login/registro y menú de usuario
+│       ├── subastas.js       ← subastas: listado, crear, pujar, cuenta atrás
+│       ├── login.js          ← páginas login.html y registro.html
+│       ├── booking-storage.js← utilidades de reservas
+│       ├── reservas.js       ← página de reservas
+│       └── perfil.js         ← página de perfil
 └── README.md
 ```
 
 ---
 
-## 🔐 Login y 🔥 subastas entre usuarios
+## 🔐 Cuentas, 🔥 subastas y 🎾 reservas
 
-- **Registro e inicio de sesión** con nombre, correo y contraseña (la contraseña se guarda cifrada con SHA-256 + sal, nunca en texto plano).
-- **Crear subasta** (hay que haber iniciado sesión): instalación, fecha y hora del partido, precio de salida, incremento mínimo y duración (incluye una opción de *2 minutos* para hacer la demostración en clase).
-- **Pujar** (hay que haber iniciado sesión): cada puja debe superar la anterior en el incremento mínimo. No se puede pujar en tu propia subasta ni volver a pujar si ya vas ganando.
-- Cuenta atrás en directo. Al terminar, la subasta pasa a *Finalizadas* y se muestra el ganador.
-- Filtros: **En curso**, **Finalizadas**, **Mis subastas** y **Mis pujas**. Aviso de *"Te han superado"* si alguien puja más que tú.
-- El creador puede **cancelar** su subasta mientras no tenga pujas.
+- **Registro e inicio de sesión** desde la ventana de la página principal o desde `login.html` / `registro.html` (son las mismas cuentas).
+- **Subastas entre usuarios:** cualquier usuario puede subastar una reserva (instalación, fecha, hora, precio de salida, incremento mínimo y duración; hay una opción de *2 minutos* para la demostración en clase). Los demás pujan; cada puja debe superar la anterior en el incremento mínimo. No se puede pujar en tu propia subasta ni superarte a ti mismo.
+- Cuenta atrás en directo, aviso de *"Te han superado"*, ganador al terminar, filtros (**En curso**, **Finalizadas**, **Mis subastas**, **Mis pujas**) y cancelación mientras no haya pujas.
+- **Reservas de pádel** (`reservas.html`): una pista solo puede tenerla un usuario por turno.
+- **Perfil** (`perfil.html`): reservas activas y anteriores, subastas creadas, pujas en curso y subastas ganadas.
 
-**Cuentas de prueba** (contraseña `demo1234`): `ana@ceutaplay.es`, `luis@ceutaplay.es`, `marta@ceutaplay.es`.
+### Dos modos de funcionamiento
+
+| Modo | Cuándo | Qué pasa |
+|------|--------|----------|
+| 🟢 **Servidor** | `public/js/config.js` tiene la URL y la clave de Supabase | Todos los dispositivos ven las mismas cuentas, subastas, pujas y reservas, **en tiempo real**. Las reglas se comprueban en el servidor. |
+| 🟡 **Local** | `config.js` vacío | Todo se guarda en el navegador. Útil para probar sin servidor; trae cuentas de prueba (`ana@ceutaplay.es`, `luis@ceutaplay.es`, `marta@ceutaplay.es`, contraseña `demo1234`). |
+
+El pie de la página principal indica en qué modo está funcionando.
+
+---
+
+## 🗄️ Conectar el servidor (Supabase) — solo la primera vez
+
+GitHub Pages solo sirve archivos; los datos compartidos viven en [Supabase](https://supabase.com) (gratis), al que la web se conecta directamente desde el navegador.
+
+1. **Crear el proyecto:** entra en <https://supabase.com>, crea una cuenta y pulsa **New project**. Elige un nombre (p. ej. `ceutaplay`), una contraseña para la base de datos (guárdala) y la región **West EU** o **Central EU**. Espera a que termine de crearse (1–2 minutos).
+2. **Crear las tablas:** en el menú de la izquierda, **SQL Editor** → **New query**. Copia todo el contenido de [`supabase/schema.sql`](supabase/schema.sql), pégalo y pulsa **Run**. Debe terminar con *"Success. No rows returned"*.
+3. **Quitar la confirmación por correo** (recomendado para el trabajo): **Authentication** → **Sign In / Providers** → **Email** → desactiva **Confirm email** → **Save**. Si se deja activado, cada usuario tendrá que confirmar su correo antes de entrar (y el plan gratuito solo envía unos pocos correos por hora).
+4. **Copiar las claves:** **Project Settings** → **API Keys** (o el botón **Connect**). Copia:
+   - **Project URL** → `https://xxxxxxxx.supabase.co`
+   - La clave **publishable** (o **anon**, en proyectos antiguos)
+5. **Pegarlas en la web:** abre `public/js/config.js` y rellena `url` y `anonKey`. Haz commit y push. En uno o dos minutos la web publicada mostrará en el pie *"🟢 Conectado al servidor"*.
+
+> La clave publishable/anon es **pública por diseño** (va en la web); la seguridad la ponen las reglas de `schema.sql`. **Nunca** pongas en `config.js` la clave *secret* / *service_role*.
+
+**Qué protege el servidor** (aunque alguien manipule la web desde su navegador):
+
+- Solo se puede pujar con sesión iniciada, por encima del mínimo, en subastas activas y que no sean tuyas. Si dos personas pujan a la vez, se procesan una detrás de otra.
+- Nadie puede modificar ni alargar subastas, ni borrar o inventarse pujas, ni cancelar subastas ajenas.
+- Las reservas solo las puede crear o cancelar su dueño, y una pista no se puede reservar dos veces en el mismo turno.
+
+**A tener en cuenta:** en el plan gratuito, Supabase **pausa el proyecto tras 7 días sin uso**. Si la web deja de cargar datos, entra en el panel de Supabase y pulsa **Restore project**. Para ver o borrar datos: **Table Editor** (tablas `perfiles`, `subastas`, `pujas`, `reservas`) y **Authentication → Users**.
 
 ### Cómo enseñar una puja entre dos usuarios
 
-La sesión dura lo que la pestaña (salvo que marques *Recordarme*), así que:
-
-1. Abre la web en una pestaña e inicia sesión como **Luis**.
-2. Abre la web en **otra pestaña** del mismo navegador e inicia sesión como **Ana**.
-3. Puja con uno y verás que en la otra pestaña el precio se actualiza al momento y aparece *"Te han superado"*.
-
-El enlace **"Restablecer datos de ejemplo"** del pie de página borra todo y vuelve a crear los usuarios y subastas de prueba.
-
-### ⚠️ Limitación importante
-
-GitHub Pages no tiene servidor ni base de datos, así que los datos se guardan **en el navegador de cada persona** (`localStorage`). Eso significa que:
-
-- Los usuarios y pujas de un ordenador **no los ve otro ordenador** (sí otras pestañas del mismo navegador).
-- No es seguro para una web real: cualquiera puede modificar los datos desde las herramientas del navegador.
-
-Para que usuarios de distintos dispositivos pujen entre sí haría falta un backend (por ejemplo Firebase o Supabase, que tienen plan gratuito y funcionan con GitHub Pages). Todo el acceso a datos está aislado en `public/js/store.js`, así que solo habría que reescribir ese archivo.
+- **Con servidor:** abre la web en el móvil y en el ordenador (o en dos navegadores), entra con una cuenta distinta en cada uno y puja: el otro dispositivo lo ve al momento.
+- **Sin servidor (modo local):** usa dos pestañas del mismo navegador, cada una con un usuario (sin marcar *Recordarme*, la sesión es por pestaña). El enlace *"Restablecer datos de ejemplo"* del pie vuelve a crear los datos de prueba.
 
 ---
 
@@ -129,7 +157,8 @@ No hace falta instalar nada. Cualquiera de estas opciones vale:
 
 ## ✏️ Cómo hacer cambios
 
-- **Añadir/editar instalaciones, deportes, usuarios o subastas de ejemplo:** solo hay que tocar `public/js/data.js`. Los datos de ejemplo solo se crean la primera vez que se abre la web; para ver los cambios pulsa *"Restablecer datos de ejemplo"* en el pie de página.
+- **Añadir/editar instalaciones o deportes:** `public/js/data.js`. Los usuarios y subastas de ejemplo de ese archivo solo se usan en modo local.
+- **Cambiar reglas de subastas o reservas:** en el servidor, `supabase/schema.sql` (y volver a ejecutarlo en el SQL Editor); en modo local, `public/js/store.js`.
 - **Cambiar textos o secciones:** `public/index.html`.
 - **Cambiar estilos:** `public/css/styles.css`.
 

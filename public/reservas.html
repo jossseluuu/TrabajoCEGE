@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservar pádel | CeutaPlay</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="js/config.js" defer></script>
+    <script src="js/data.js" defer></script>
+    <script src="js/store.js" defer></script>
+    <script src="js/booking-storage.js" defer></script>
+    <script src="js/reservas.js" defer></script>
+</head>
+<body>
+    <header class="navbar">
+        <div class="container nav-content">
+            <a href="index.html" class="logo">CEUTA<span>PLAY</span></a>
+            <div class="nav-actions">
+                <a href="index.html#instalaciones" class="login-btn">Volver a instalaciones</a>
+                <a href="perfil.html" class="register-btn">Mi perfil</a>
+            </div>
+        </div>
+    </header>
+    <main class="login-page">
+        <section class="login-panel reservation-panel" aria-labelledby="reservation-title">
+            <h1 id="reservation-title">Reservar pádel</h1>
+            <p id="reservation-help">Los turnos duran 1 hora. Una pista solo puede tenerla un usuario por turno. La confirmación oficial depende de cada instalación.</p>
+            <form id="reservation-form" class="login-form" aria-describedby="reservation-help">
+                <label for="facility">Instalación</label>
+                <select id="facility" required></select>
+                <label for="court">Pista</label>
+                <select id="court" required></select>
+                <label for="booking-date">Fecha</label>
+                <input id="booking-date" type="date" required>
+                <label for="booking-time">Hora de inicio</label>
+                <select id="booking-time" required></select>
+                <p>Tarifa de alquiler pendiente de confirmar</p>
+                <button type="submit" class="register-btn" disabled>Guardar reserva</button>
+            </form>
+            <p id="reservation-status" role="status"></p>
+            <noscript><p>Activa JavaScript para guardar reservas.</p></noscript>
+            <h2>Mis reservas</h2>
+            <ul id="reservation-list"></ul>
+        </section>
+    </main>
+</body>
+</html>

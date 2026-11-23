@@ -44,7 +44,7 @@ const Subastas = (() => {
     }
 
     function haceCuanto(ms) {
-        const min = Math.round((Date.now() - ms) / 60000);
+        const min = Math.round((Store.ahora() - ms) / 60000);
         if (min < 1) return "ahora mismo";
         if (min < 60) return `hace ${min} min`;
         const h = Math.round(min / 60);
@@ -186,7 +186,7 @@ const Subastas = (() => {
 
     // Actualiza las cuentas atrás cada segundo sin repintar todo
     function tic() {
-        const ahora = Date.now();
+        const ahora = Store.ahora();
         let algunaTerminada = false;
 
         document.querySelectorAll("[data-fin]").forEach((el) => {
@@ -278,11 +278,12 @@ const Subastas = (() => {
             b.addEventListener("click", () => ($("bid-cantidad").value = b.dataset.puja));
         });
 
-        form.addEventListener("submit", (event) => {
+        form.addEventListener("submit", async (event) => {
             event.preventDefault();
             const cantidad = Number($("bid-cantidad").value);
+            form.querySelector("[type=submit]").disabled = true;
             try {
-                Store.pujar(s.id, cantidad);
+                await Store.pujar(s.id, cantidad);
                 UI.toast(`✅ Has pujado ${cantidad} € por ${s.titulo}.`);
                 pintar();
             } catch (error) {
@@ -328,7 +329,10 @@ const Subastas = (() => {
         // Precio de salida orientativo: la mitad del precio normal de la pista
         const sugerirPrecio = () => {
             const instalacion = INSTALACIONES.find((i) => i.id === Number(selInstalacion.value));
-            if (instalacion) $("crear-precio").value = Math.max(1, Math.round(instalacion.precio / 2));
+            // Algunas instalaciones (pádel) aún no tienen tarifa: se propone 10 €
+            if (instalacion) $("crear-precio").value = instalacion.precio
+                ? Math.max(1, Math.round(instalacion.precio / 2))
+                : 10;
         };
         selInstalacion.addEventListener("change", sugerirPrecio);
 
@@ -350,11 +354,13 @@ const Subastas = (() => {
             }, "Inicia sesión para crear una subasta.");
         });
 
-        form.addEventListener("submit", (event) => {
+        form.addEventListener("submit", async (event) => {
             event.preventDefault();
             const datos = new FormData(form);
+            const boton = form.querySelector("[type=submit]");
+            boton.disabled = true;
             try {
-                const s = Store.crearSubasta({
+                const s = await Store.crearSubasta({
                     instalacionId: datos.get("instalacion"),
                     fecha: datos.get("fecha"),
                     hora: datos.get("hora"),
@@ -370,6 +376,8 @@ const Subastas = (() => {
                 const e = form.querySelector(".form-error");
                 e.textContent = error.message;
                 e.hidden = false;
+            } finally {
+                boton.disabled = false;
             }
         });
     }
@@ -400,7 +408,7 @@ const Subastas = (() => {
         });
 
         // Botones de las tarjetas
-        document.getElementById("subastas").addEventListener("click", (event) => {
+        document.getElementById("subastas").addEventListener("click", async (event) => {
             const boton = event.target.closest("[data-accion]");
             if (!boton) return;
             const { accion, id } = boton.dataset;
@@ -409,7 +417,7 @@ const Subastas = (() => {
             if (accion === "login") Auth.abrir("login");
             if (accion === "cancelar" && confirm("¿Seguro que quieres cancelar esta subasta?")) {
                 try {
-                    Store.cancelarSubasta(id);
+                    await Store.cancelarSubasta(id);
                     UI.toast("Subasta cancelada.");
                     pintar();
                 } catch (error) {
@@ -423,10 +431,9 @@ const Subastas = (() => {
             pintar();
         });
 
-        // Si otra pestaña (otro usuario) puja o crea una subasta, se ve al momento
-        window.addEventListener("storage", (event) => {
-            if (event.key === Store.KEYS.subastas || event.key === null) pintar();
-        });
+        // Si otra persona (otro dispositivo u otra pestaña) puja o crea una
+        // subasta, se ve al momento
+        document.addEventListener("datos-cambiados", pintar);
 
         setInterval(tic, 1000);
         pintar();
@@ -438,7 +445,12 @@ const Subastas = (() => {
 
 // Arranque: datos de ejemplo (solo la primera vez) → login → subastas
 document.addEventListener("DOMContentLoaded", async () => {
-    await Store.inicializar();
+    try {
+        await Store.inicializar();
+    } catch (error) {
+        console.error(error);
+        UI.toast("No se ha podido conectar con el servidor. Recarga la página.", "error");
+    }
     Auth.iniciar();
     Subastas.iniciar();
 });
