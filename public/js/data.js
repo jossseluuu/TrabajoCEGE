@@ -1,5 +1,5 @@
 // Datos de la web (antes estaban en core/views.py de Django).
-// Para añadir o cambiar instalaciones, deportes o subastas, edita solo este archivo.
+// Para añadir o cambiar instalaciones, deportes o datos de ejemplo, edita solo este archivo.
 
 const DEPORTES = [
     { nombre: "Pádel", icono: "🎾" },
@@ -141,17 +141,51 @@ const INSTALACIONES = [
 
 const formatoEuros = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", minimumFractionDigits: 0 });
 
-const SUBASTAS = [
+// Usuarios de prueba que se crean la primera vez que se abre la web.
+// Todos tienen la contraseña "demo1234".
+const USUARIOS_DEMO = [
+    { nombre: "Ana", email: "ana@ceutaplay.es", password: "demo1234" },
+    { nombre: "Luis", email: "luis@ceutaplay.es", password: "demo1234" },
+    { nombre: "Marta", email: "marta@ceutaplay.es", password: "demo1234" },
+];
+
+// Subastas de ejemplo. Los tiempos son relativos al momento en que se crean:
+// - terminaEnMin: minutos que quedan para que termine la subasta
+// - partidoEnHoras: horas que faltan para el partido
+const SUBASTAS_DEMO = [
     {
-        nombre: "Pista de Pádel",
-        precio_original: 24,
-        precio_actual: 16,
-        hora: "19:00",
+        instalacionId: 1,
+        vendedor: "ana@ceutaplay.es",
+        descripcion: "No puedo ir a mi reserva, la subasto. Incluye palas.",
+        precioSalida: 10,
+        incremento: 1,
+        terminaEnMin: 90,
+        partidoEnHoras: 4,
+        pujas: [
+            { email: "luis@ceutaplay.es", cantidad: 12 },
+            { email: "marta@ceutaplay.es", cantidad: 14 },
+        ],
     },
     {
-        nombre: "Pista de Tenis",
-        precio_original: 20,
-        precio_actual: 12,
-        hora: "20:30",
+        instalacionId: 2,
+        vendedor: "luis@ceutaplay.es",
+        descripcion: "Campo de fútbol 7 libre esta tarde.",
+        precioSalida: 25,
+        incremento: 2,
+        terminaEnMin: 240,
+        partidoEnHoras: 8,
+        pujas: [],
+    },
+    {
+        instalacionId: 3,
+        vendedor: "marta@ceutaplay.es",
+        descripcion: "Pista de tenis para mañana por la mañana.",
+        precioSalida: 8,
+        incremento: 1,
+        terminaEnMin: 20,
+        partidoEnHoras: 18,
+        pujas: [
+            { email: "ana@ceutaplay.es", cantidad: 9 },
+        ],
     },
 ];
