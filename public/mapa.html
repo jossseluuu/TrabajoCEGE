@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de instalaciones | CeutaPlay</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="anonymous">
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="anonymous" defer></script>
+    <script src="js/data.js" defer></script>
+    <script src="js/session-nav.js" defer></script>
+    <script src="js/mapa.js" defer></script>
+</head>
+<body>
+    <header class="navbar">
+        <div class="container nav-content">
+            <a href="index.html" class="logo">CEUTA<span>PLAY</span></a>
+            <nav aria-label="Navegación principal">
+                <a href="index.html#inicio">Inicio</a>
+                <a href="index.html#instalaciones">Instalaciones</a>
+                <a href="mapa.html" aria-current="page">Mapa</a>
+                <a href="index.html#subastas">Subastas 🔥</a>
+            </nav>
+            <div class="nav-actions">
+                <a href="login.html" class="login-btn">Iniciar sesión</a>
+                <a href="registro.html" class="register-btn">Registrarse</a>
+                <a href="perfil.html" class="register-btn" id="profile-link" hidden>Mi perfil</a>
+                <button type="button" class="login-btn" id="logout-btn" hidden>Cerrar sesión</button>
+            </div>
+        </div>
+    </header>
+    <main class="container map-page">
+        <div class="map-page-heading">
+            <header class="reservation-heading">
+                <h1>Mapa de instalaciones</h1>
+                <p>Encuentra las pistas de tenis y pádel de Ceuta.</p>
+            </header>
+            <a class="map-catalogue-link" href="index.html#instalaciones">Ver catálogo</a>
+        </div>
+        <div class="facility-map-layout">
+            <div id="facility-map" class="facility-map" role="region" aria-label="Mapa de las instalaciones de Ceuta" hidden></div>
+            <section class="reservation-panel map-directory" aria-labelledby="map-list-title">
+                <div class="map-directory-heading">
+                    <h2 id="map-list-title">Ubicaciones</h2>
+                    <span id="map-location-count" hidden></span>
+                </div>
+                <p id="map-status" role="status" hidden></p>
+                <ul id="map-locations" class="map-locations"></ul>
+                <noscript><p>Activa JavaScript para ver las ubicaciones.</p></noscript>
+            </section>
+        </div>
+    </main>
+</body>
+</html>
