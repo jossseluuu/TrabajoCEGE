@@ -97,7 +97,9 @@ const Store = (() => {
             precioActual: mejor ? mejor.cantidad : subasta.precioSalida,
             pujaMinima: mejor ? mejor.cantidad + subasta.incremento : subasta.precioSalida,
             mejorPuja: mejor,
-            ganador: estado === "finalizada" && mejor ? getUsuario(mejor.usuarioId) : null,
+            ganador: estado === "finalizada" && mejor
+                ? getUsuario(mejor.usuarioId) || { id: mejor.usuarioId, nombre: "Usuario" }
+                : null,
             vendedor: getUsuario(subasta.vendedorId),
             restanteMs: Math.max(0, subasta.fin - ahora),
         };
@@ -221,6 +223,14 @@ const Store = (() => {
             if (!tablas.length) tablas = Object.keys(cargadores);
             try {
                 await Promise.all(tablas.map((t) => cargadores[t]()));
+                // Si aparece un usuario que aún no conocemos (p. ej. alguien que se
+                // acaba de registrar en otro dispositivo), se recargan los perfiles
+                const desconocido = (id) => id && !datos.perfiles.has(id);
+                if (!tablas.includes("perfiles") &&
+                    (datos.pujas.some((p) => desconocido(p.usuarioId)) ||
+                     datos.subastas.some((s) => desconocido(s.vendedorId)))) {
+                    await cargadores.perfiles();
+                }
             } catch (error) {
                 console.error("Error al cargar datos del servidor:", error);
             }

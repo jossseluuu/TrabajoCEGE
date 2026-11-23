@@ -98,6 +98,13 @@ alter table public.subastas enable row level security;
 alter table public.pujas    enable row level security;
 alter table public.reservas enable row level security;
 
+-- Permisos sobre las tablas (los proyectos nuevos de Supabase no los dan
+-- por defecto). Solo lectura, salvo las reservas propias; las reglas de
+-- abajo (policies) deciden además QUÉ filas se pueden ver o tocar.
+grant usage on schema public to anon, authenticated;
+grant select on public.perfiles, public.subastas, public.pujas to anon, authenticated;
+grant select, insert, delete on public.reservas to authenticated;
+
 drop policy if exists "perfiles visibles" on public.perfiles;
 create policy "perfiles visibles" on public.perfiles for select using (true);
 
