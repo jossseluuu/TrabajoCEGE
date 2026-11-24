@@ -14,6 +14,9 @@ const timeSelect = document.getElementById("booking-time");
 const statusMessage = document.getElementById("reservation-status");
 const reservationList = document.getElementById("reservation-list");
 const bookingPrice = document.getElementById("booking-price");
+const reservationPreview = document.getElementById("reservation-preview");
+const reservationPreviewPhoto = document.getElementById("reservation-preview-photo");
+const reservationPreviewCaption = document.getElementById("reservation-preview-caption");
 const locationSection = document.getElementById("ubicacion");
 const locationAddress = document.getElementById("location-address");
 const locationNote = document.getElementById("location-note");
@@ -193,8 +196,37 @@ function showReservations() {
     }
 }
 
+function showFacilityPhoto(facility) {
+    const photo = FOTOS_RESERVA[facility.id];
+    const fallback = FOTOS_RESERVA_ILUSTRATIVAS[facility.deporte];
+    reservationPreview.hidden = true;
+    reservationPreviewPhoto.replaceChildren();
+
+    function loadPhoto(source, illustrative) {
+        if (!source) return;
+        const image = document.createElement("img");
+        image.alt = source.descripcion;
+        image.decoding = "async";
+        image.addEventListener("load", () => {
+            if (image.parentElement !== reservationPreviewPhoto) return;
+            const caption = illustrative ? `Imagen ilustrativa · ${source.descripcion}` : source.descripcion;
+            reservationPreviewCaption.textContent = `${caption} · ${source.credito}`;
+            reservationPreview.hidden = false;
+        }, { once: true });
+        image.addEventListener("error", () => {
+            if (image.parentElement !== reservationPreviewPhoto) return;
+            if (!illustrative && source.src !== fallback?.src) loadPhoto(fallback, true);
+        }, { once: true });
+        reservationPreviewPhoto.replaceChildren(image);
+        image.src = source.src;
+    }
+
+    loadPhoto(photo || fallback, !photo);
+}
+
 function updateFacility() {
     const facility = facilities.find(({ id }) => id === Number(facilitySelect.value));
+    showFacilityPhoto(facility);
     updateCourtAvailability();
     reservationTitle.textContent = `Reservar ${facility.deporte.toLowerCase()}`;
     document.getElementById("football-booking-note").hidden = facility.deporte !== "Fútbol";
