@@ -58,6 +58,7 @@ create table if not exists public.reservas (
     fecha           date not null,
     hora            text not null check (hora ~ '^\d{2}:\d{2}$'),
     creada          timestamptz not null default now(),
+    mostrar_nombre  boolean not null default false,
     -- una pista solo se puede reservar una vez por turno
     unique (instalacion_id, pista, fecha, hora)
 );
@@ -126,6 +127,29 @@ create policy "crear mis reservas" on public.reservas for insert to authenticate
 drop policy if exists "borrar mis reservas" on public.reservas;
 create policy "borrar mis reservas" on public.reservas for delete to authenticated
     using (usuario_id = auth.uid());
+
+-- Opiniones: una por instalación y usuario.
+create table if not exists public.opiniones (
+    instalacion_id integer not null check (instalacion_id > 0),
+    usuario_id uuid not null default auth.uid() references public.perfiles (id) on delete cascade,
+    puntuacion smallint not null check (puntuacion between 1 and 5),
+    comentario text not null check (char_length(btrim(comentario)) between 1 and 500),
+    primary key (instalacion_id, usuario_id)
+);
+
+alter table public.opiniones enable row level security;
+grant select, insert, update on public.opiniones to authenticated;
+
+drop policy if exists "leer opiniones" on public.opiniones;
+create policy "leer opiniones" on public.opiniones for select to authenticated using (true);
+
+drop policy if exists "crear mi opinion" on public.opiniones;
+create policy "crear mi opinion" on public.opiniones for insert to authenticated
+    with check (usuario_id = auth.uid());
+
+drop policy if exists "editar mi opinion" on public.opiniones;
+create policy "editar mi opinion" on public.opiniones for update to authenticated
+    using (usuario_id = auth.uid()) with check (usuario_id = auth.uid());
 
 
 -- ---------- FUNCIONES ----------

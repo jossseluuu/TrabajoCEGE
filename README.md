@@ -64,7 +64,7 @@ TrabajoGabi/
 - **Registro e inicio de sesión** desde la ventana de la página principal o desde `login.html` / `registro.html` (son las mismas cuentas).
 - **Subastas entre usuarios:** cualquier usuario puede subastar una reserva (instalación, fecha, hora, precio de salida, incremento mínimo y duración; hay una opción de *2 minutos* para la demostración en clase). Los demás pujan; cada puja debe superar la anterior en el incremento mínimo. No se puede pujar en tu propia subasta ni superarte a ti mismo.
 - Cuenta atrás en directo, aviso de *"Te han superado"*, ganador al terminar, filtros (**En curso**, **Finalizadas**, **Mis subastas**, **Mis pujas**) y cancelación mientras no haya pujas.
-- **Reservas de pádel** (`reservas.html`): una pista solo puede tenerla un usuario por turno.
+- **Reservas** (`reservas.html`): una pista solo puede tenerla un usuario por turno. La agenda muestra la ocupación semanal y la actividad por día. Al reservar se puede elegir mostrar el nombre en la agenda.
 - **Perfil** (`perfil.html`): reservas activas y anteriores, subastas creadas, pujas en curso y subastas ganadas.
 
 ### Dos modos de funcionamiento
@@ -79,6 +79,10 @@ El pie de la página principal indica en qué modo está funcionando.
 ---
 
 ## 🗄️ Conectar el servidor (Supabase) — solo la primera vez
+
+En proyectos que ya tienen las tablas, ejecuta [la actualización de reservas sociales](supabase/reservas-sociales.sql) en el SQL Editor para activar la opción de mostrar el nombre. Las reservas previas aparecen en la agenda sin nombre.
+
+En proyectos ya configurados, ejecuta [la actualización de opiniones](supabase/opiniones.sql) para compartir las valoraciones entre usuarios. En modo local se guardan en el navegador.
 
 GitHub Pages solo sirve archivos; los datos compartidos viven en [Supabase](https://supabase.com) (gratis), al que la web se conecta directamente desde el navegador.
 

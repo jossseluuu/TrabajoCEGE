@@ -81,6 +81,14 @@ const Store = (() => {
         };
     }
 
+    function validarOpinion({ instalacionId, puntuacion, comentario }) {
+        if (!INSTALACIONES.some((i) => i.id === instalacionId && i.pistas)) throw new Error("Elige una instalación.");
+        if (!Number.isInteger(puntuacion) || puntuacion < 1 || puntuacion > 5) throw new Error("Elige de 1 a 5 estrellas.");
+        const texto = typeof comentario === "string" ? comentario.trim() : "";
+        if (!texto || texto.length > 500) throw new Error("Escribe un comentario de entre 1 y 500 caracteres.");
+        return { instalacionId, puntuacion, comentario: texto };
+    }
+
     // Añade a una subasta los campos calculados (estado, puja actual, ganador…)
     function enriquecer(subasta, ahora, getUsuario) {
         const pujas = [...subasta.pujas].sort((a, b) => b.cantidad - a.cantidad || a.fecha - b.fecha);
@@ -147,6 +155,7 @@ const Store = (() => {
 
         let desfase = 0; // diferencia entre el reloj del servidor y el del dispositivo
         let sesion = null;
+        let nombresEnAgenda = false;
         const datos = { perfiles: new Map(), subastas: [], pujas: [], reservas: [] };
 
         const ahora = () => Date.now() + desfase;
@@ -207,7 +216,15 @@ const Store = (() => {
                     datos.reservas = [];
                     return;
                 }
-                const filas = comprobar(await client.from("reservas").select("*"));
+                const campos = "id, usuario_id, instalacion_id, pista, fecha, hora";
+                let resultado = await client.from("reservas").select(`${campos}, mostrar_nombre`);
+                if (resultado.error?.code === "42703" || resultado.error?.code === "PGRST204") {
+                    nombresEnAgenda = false;
+                    resultado = await client.from("reservas").select(campos);
+                } else if (!resultado.error) {
+                    nombresEnAgenda = true;
+                }
+                const filas = comprobar(resultado);
                 datos.reservas = filas.map((r) => ({
                     id: r.id,
                     userId: r.usuario_id,
@@ -215,6 +232,7 @@ const Store = (() => {
                     court: r.pista,
                     date: r.fecha,
                     time: r.hora,
+                    mostrarNombre: r.mostrar_nombre === true,
                 }));
             },
         };
@@ -228,7 +246,8 @@ const Store = (() => {
                 const desconocido = (id) => id && !datos.perfiles.has(id);
                 if (!tablas.includes("perfiles") &&
                     (datos.pujas.some((p) => desconocido(p.usuarioId)) ||
-                     datos.subastas.some((s) => desconocido(s.vendedorId)))) {
+                     datos.subastas.some((s) => desconocido(s.vendedorId)) ||
+                     datos.reservas.some((r) => r.mostrarNombre && desconocido(r.userId)))) {
                     await cargadores.perfiles();
                 }
             } catch (error) {
@@ -392,10 +411,11 @@ const Store = (() => {
         const pistaOcupada = (facility, court, date, time) => datos.reservas.some((r) =>
             r.facility === facility && r.court === court && r.date === date && r.time === time);
 
-        async function reservar({ facility, court, date, time }) {
+        async function reservar({ facility, court, date, time, mostrarNombre = false }) {
             exigirSesion();
             comprobar(await client.from("reservas").insert({
                 instalacion_id: facility, pista: court, fecha: date, hora: time,
+                ...(mostrarNombre && nombresEnAgenda ? { mostrar_nombre: true } : {}),
             }));
             await recargar("reservas");
         }
@@ -406,10 +426,34 @@ const Store = (() => {
             await recargar("reservas");
         }
 
+        async function listarOpiniones(instalacionId) {
+            exigirSesion();
+            const resultado = await client.from("opiniones")
+                .select("usuario_id, puntuacion, comentario, perfiles(nombre)")
+                .eq("instalacion_id", instalacionId)
+                .order("usuario_id");
+            if (resultado.error?.code === "PGRST205" || resultado.error?.code === "42P01") return null;
+            return comprobar(resultado).map((o) => ({
+                usuarioId: o.usuario_id, nombre: o.perfiles?.nombre,
+                puntuacion: o.puntuacion, comentario: o.comentario,
+            }));
+        }
+
+        async function guardarOpinion(datosOpinion) {
+            exigirSesion();
+            const { instalacionId, puntuacion, comentario } = validarOpinion(datosOpinion);
+            comprobar(await client.from("opiniones").upsert({
+                instalacion_id: instalacionId, usuario_id: sesion.id, puntuacion, comentario,
+            }, { onConflict: "instalacion_id,usuario_id" }));
+        }
+
         return {
             inicializar, ahora, registrar, login, cerrarSesion, usuarioActual, getUsuario,
             listarSubastas, getSubasta, crearSubasta, pujar, cancelarSubasta,
             misReservas, pistaOcupada, reservar, cancelarReserva,
+            reservasParaAgenda: () => sesion ? datos.reservas : [],
+            permiteMostrarNombre: () => nombresEnAgenda,
+            listarOpiniones, guardarOpinion,
         };
     }
 
@@ -428,6 +472,7 @@ const Store = (() => {
             subastas: `cp_subastas:${CARPETA}`,
             sesion: `cp_sesion:${CARPETA}`,
             reservas: `ceutaplay-padel-reservations:${CARPETA}`,
+            opiniones: `cp_opiniones:${CARPETA}`,
         };
 
         const ahora = () => Date.now();
@@ -604,13 +649,13 @@ const Store = (() => {
         const pistaOcupada = (facility, court, date, time) => todasLasReservas().some((r) =>
             r.facility === facility && r.court === court && r.date === date && r.time === time);
 
-        async function reservar({ facility, court, date, time }) {
+        async function reservar({ facility, court, date, time, mostrarNombre = false }) {
             const usuario = exigirSesion();
             if (pistaOcupada(facility, court, date, time)) {
                 throw new Error("Esa pista ya está reservada por otro usuario en ese turno.");
             }
             const reservas = todasLasReservas();
-            reservas.push({ id: nuevoId(), userId: usuario.id, facility, court, date, time });
+            reservas.push({ id: nuevoId(), userId: usuario.id, facility, court, date, time, mostrarNombre });
             guardar(KEYS.reservas, reservas);
             avisar("datos-cambiados");
         }
@@ -619,6 +664,21 @@ const Store = (() => {
             const usuario = exigirSesion();
             guardar(KEYS.reservas, todasLasReservas().filter((r) => !(r.id === id && r.userId === usuario.id)));
             avisar("datos-cambiados");
+        }
+
+        async function listarOpiniones(instalacionId) {
+            exigirSesion();
+            return leer(KEYS.opiniones, []).filter((o) => o.instalacionId === instalacionId)
+                .map((o) => ({ ...o, nombre: getUsuario(o.usuarioId)?.nombre }));
+        }
+
+        async function guardarOpinion(datosOpinion) {
+            const usuario = exigirSesion();
+            const opinion = validarOpinion(datosOpinion);
+            const opiniones = leer(KEYS.opiniones, []).filter((o) =>
+                o.instalacionId !== opinion.instalacionId || o.usuarioId !== usuario.id);
+            opiniones.push({ ...opinion, usuarioId: usuario.id });
+            guardar(KEYS.opiniones, opiniones);
         }
 
         // ---------- datos de ejemplo ----------
@@ -700,6 +760,9 @@ const Store = (() => {
             inicializar, reiniciarDemo, ahora, registrar, login, cerrarSesion, usuarioActual, getUsuario,
             listarSubastas, getSubasta, crearSubasta, pujar, cancelarSubasta,
             misReservas, pistaOcupada, reservar, cancelarReserva,
+            reservasParaAgenda: () => usuarioActual() ? todasLasReservas() : [],
+            permiteMostrarNombre: () => true,
+            listarOpiniones, guardarOpinion,
         };
     }
 

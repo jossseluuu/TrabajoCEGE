@@ -103,11 +103,6 @@ const Auth = (() => {
 
         if (usuario) {
             zona.innerHTML = `
-                <a href="perfil.html" class="user-chip" title="${UI.escapeHTML(usuario.email)}">
-                    <span class="user-avatar">${UI.escapeHTML(usuario.nombre.charAt(0).toUpperCase())}</span>
-                    ${UI.escapeHTML(usuario.nombre)}
-                </a>
-                <a href="perfil.html" class="register-btn">Mi perfil</a>
                 <button type="button" class="login-btn" data-accion="logout">Cerrar sesión</button>`;
         } else {
             zona.innerHTML = `

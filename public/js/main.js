@@ -1,16 +1,9 @@
 // Lógica de la página. Sustituye a las plantillas de Django:
 // pinta las tarjetas de instalaciones y gestiona el buscador.
-// El login está en auth.js, las subastas en subastas.js y fechaISO() en store.js.
+// El login está en auth.js y las subastas en subastas.js.
 
 function crearTarjetaInstalacion(instalacion) {
     const etiqueta = `<span class="card-tag">${instalacion.deporte}</span>`;
-    const imagenAlternativa = instalacion.imagenAlternativa ? ` data-image-fallback="${instalacion.imagenAlternativa}"` : "";
-    const imagen = instalacion.imagen
-        ? `<div class="card-image"><img src="${instalacion.imagen}" alt="${instalacion.imagenAlt || ""}"${imagenAlternativa}>${etiqueta}</div>`
-        : `<div class="card-image card-image-placeholder">Foto pendiente${etiqueta}</div>`;
-    const credito = instalacion.fuenteImagen
-        ? `<p class="photo-credit"><a href="${instalacion.fuenteImagen}">${instalacion.creditoImagen}</a></p>`
-        : instalacion.creditoImagen ? `<p class="photo-credit">${instalacion.creditoImagen}</p>` : "";
     const precio = instalacion.precio == null ? "" : `
         <div class="price">
             <small>Desde</small>
@@ -35,12 +28,11 @@ function crearTarjetaInstalacion(instalacion) {
 
     return `
         <article class="card" data-deporte="${instalacion.deporte}">
-            ${imagen}
             <div class="card-content">
-                ${credito}
+                ${etiqueta}
                 <h3>${instalacion.nombre}</h3>
-                <p class="location">📍 ${instalacion.ubicacion}</p>
-                ${instalacion.detalle ? `<p class="location">${instalacion.detalle}</p>` : ""}
+                <p class="location">${instalacion.ubicacion}</p>
+                ${instalacion.detalle ? `<p class="card-detail">${instalacion.detalle}</p>` : ""}
                 ${reserva || pie}
             </div>
         </article>`;
@@ -50,50 +42,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Opciones del desplegable de deportes
     const selectDeporte = document.getElementById("deporte");
-    DEPORTES.forEach((deporte) => {
+    const availableSports = new Set(INSTALACIONES.map(({ deporte }) => deporte));
+    DEPORTES.filter(({ nombre }) => availableSports.has(nombre)).forEach((deporte) => {
         const option = document.createElement("option");
         option.value = deporte.nombre;
         option.textContent = deporte.nombre;
         selectDeporte.appendChild(option);
     });
 
-    // Rango de fechas: de hoy a dentro de 30 días
-    const hoy = new Date();
-    const maxima = new Date();
-    maxima.setDate(hoy.getDate() + 30);
-    const inputFecha = document.getElementById("fecha");
-    inputFecha.min = fechaISO(hoy);
-    inputFecha.max = fechaISO(maxima);
-    inputFecha.value = fechaISO(hoy);
-
     // Tarjetas
     const instalacionesGrid = document.getElementById("instalaciones-grid");
-    instalacionesGrid.addEventListener("error", (event) => {
-        const image = event.target;
-        if (!(image instanceof HTMLImageElement)) return;
-        if (image.dataset.imageFallback) {
-            image.src = image.dataset.imageFallback;
-            delete image.dataset.imageFallback;
-            return;
-        }
-
-        const frame = image.parentElement;
-        frame.classList.add("card-image-placeholder");
-        image.replaceWith(document.createTextNode("Foto no disponible"));
-    }, true);
     instalacionesGrid.innerHTML = INSTALACIONES.map(crearTarjetaInstalacion).join("");
 
     // Año del pie de página
-    document.getElementById("anio").textContent = hoy.getFullYear();
+    document.getElementById("anio").textContent = new Date().getFullYear();
 
     // Buscador: filtra las instalaciones por deporte
     const form = document.getElementById("search-form");
-    const cards = document.querySelectorAll(".card");
+    const cards = instalacionesGrid.querySelectorAll(".card");
     const emptyResults = document.getElementById("empty-results");
+    const installationCount = document.getElementById("installation-count");
 
-    form.addEventListener("submit", (event) => {
-        event.preventDefault();
-
+    function filterInstallations() {
         const selectedSport = selectDeporte.value;
         let visibleCards = 0;
 
@@ -106,6 +76,13 @@ document.addEventListener("DOMContentLoaded", () => {
         });
 
         emptyResults.hidden = visibleCards > 0;
+        installationCount.textContent = visibleCards === 1 ? "1 instalación" : `${visibleCards} instalaciones`;
+    }
+
+    filterInstallations();
+    form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        filterInstallations();
 
         document.getElementById("instalaciones").scrollIntoView({
             behavior: "smooth"

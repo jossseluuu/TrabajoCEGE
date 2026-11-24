@@ -8,9 +8,10 @@
 
     <!-- Rutas relativas: necesarias para que funcione en https://usuario.github.io/TrabajoCEGE/ -->
     <link rel="stylesheet" href="css/styles.css">
+    <script src="js/portada.js" defer></script>
 </head>
 
-<body>
+<body class="home-page">
 
     <!-- MENÚ -->
 
@@ -21,93 +22,55 @@
                 CEUTA<span>PLAY</span>
             </a>
 
-            <nav>
-                <a href="#inicio">Inicio</a>
+            <nav aria-label="Navegación principal">
+                <a href="#inicio" aria-current="page">Inicio</a>
                 <a href="#instalaciones">Instalaciones</a>
                 <a href="mapa.html">Mapa</a>
-                <a href="#subastas">Subastas 🔥</a>
+                <a href="#subastas">Subastas</a>
+                <a href="perfil.html">Mi perfil</a>
             </nav>
 
             <!-- Se rellena desde js/auth.js según haya sesión o no -->
-            <div class="nav-actions" id="nav-actions"></div>
+            <div class="nav-actions" id="nav-actions">
+                <a class="login-btn" href="login.html">Iniciar sesión</a>
+                <a class="register-btn" href="registro.html">Registrarse</a>
+            </div>
 
         </div>
     </header>
 
     <!-- PORTADA -->
 
-    <section class="hero" id="inicio">
-
-        <div class="container hero-content">
-
-            <span class="badge">🏆 TU DEPORTE EN CEUTA</span>
-
-            <h1>
-                Tu próxima partida<br>
-                empieza <span>aquí.</span>
-            </h1>
-
-            <p>
-                Encuentra las mejores pistas deportivas de Ceuta.
-                Reserva fácilmente y descubre ofertas exclusivas
-                de última hora.
-            </p>
-
-            <a href="#instalaciones" class="hero-btn">
-                Explorar instalaciones →
-            </a>
-
+    <section class="hero" id="inicio" aria-labelledby="home-title">
+        <div class="hero-carousel" id="hero-carousel" role="region" aria-label="Fotos de instalaciones deportivas">
+            <div class="hero-slides" id="hero-slides">
+                <img src="img/padel-loma-colmenar.jpg" alt="Pista azul de pádel vacía, imagen ilustrativa" data-caption="Pista de pádel · imagen ilustrativa" fetchpriority="high">
+                <img src="https://www.opsa.es/wp-content/uploads/2019/11/PHOTO-2019-10-25-21-19-29.jpg" alt="Campo de fútbol José Benoliel" data-caption="José Benoliel · Fútbol" aria-hidden="true">
+                <img src="https://static.wixstatic.com/media/3196bb_254c33eb094244a1a9c47af069a324ed~mv2.jpg/v1/fill/w_1000%2Ch_750%2Cal_c%2Cq_85%2Cusm_0.66_1.00_0.01/3196bb_254c33eb094244a1a9c47af069a324ed~mv2.jpg" alt="Zona de tenis y pádel del Parque Marítimo del Mediterráneo" data-caption="La Marina · Tenis y pádel" aria-hidden="true">
+                <img src="https://album.mediaset.es/eimg/2025/11/11/campo-jose-martinez-pirri-de-ceuta-001-jpeg-16-9-aspect-ratio-default-0_da39.jpg?w=1024" alt="Campo de fútbol José Martínez Pirri" data-caption="José Martínez Pirri · Fútbol" aria-hidden="true">
+                <img src="https://res.cloudinary.com/playtomic/image/upload/v1677764524/pro/tenants/d44c6a04-7b1d-4386-b2be-2e361b50b7ea/1677764523875.jpg" alt="Pistas cubiertas del club Loma Margarita" data-caption="Loma Margarita · Pádel" aria-hidden="true">
+            </div>
         </div>
 
-    </section>
+        <div class="container hero-content">
+            <div class="hero-copy">
+                <h1 id="home-title">Tu próxima partida empieza <span>aquí.</span></h1>
+                <p>Encuentra instalaciones de pádel, tenis y fútbol. Consulta sus turnos y reserva desde CeutaPlay.</p>
+                <form class="search-box" id="search-form" aria-label="Buscar instalaciones">
+                    <div class="search-field">
+                        <label for="deporte">Deporte</label>
+                        <select id="deporte" name="deporte">
+                            <option value="">Todos los deportes</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="search-btn">Buscar pistas</button>
+                </form>
+                <a class="hero-map-link" href="mapa.html">Ver mapa de instalaciones</a>
+            </div>
+        </div>
 
-    <!-- BUSCADOR -->
-
-    <section class="search-section">
-
-        <div class="container">
-
-            <form class="search-box" id="search-form">
-
-                <div class="search-field">
-                    <label for="deporte">Deporte</label>
-
-                    <!-- Las opciones de deporte se añaden desde js/data.js -->
-                    <select id="deporte" name="deporte">
-                        <option value="">Todos los deportes</option>
-                    </select>
-                </div>
-
-                <div class="search-field">
-                    <label for="fecha">Fecha</label>
-
-                    <!-- min, max y value se rellenan desde js/main.js -->
-                    <input type="date" id="fecha" name="fecha">
-                </div>
-
-                <div class="search-field">
-                    <label for="hora">Hora</label>
-
-                    <select id="hora" name="hora">
-                        <option value="">Cualquier hora</option>
-                        <option value="09:00">09:00</option>
-                        <option value="10:00">10:00</option>
-                        <option value="11:00">11:00</option>
-                        <option value="12:00">12:00</option>
-                        <option value="17:00">17:00</option>
-                        <option value="18:00">18:00</option>
-                        <option value="19:00">19:00</option>
-                        <option value="20:00">20:00</option>
-                        <option value="21:00">21:00</option>
-                    </select>
-                </div>
-
-                <button type="submit" class="search-btn">
-                    🔍 Buscar pistas
-                </button>
-
-            </form>
-
+        <div class="container hero-carousel-bar">
+            <p id="hero-slide-caption" class="hero-slide-caption">Pista de pádel · imagen ilustrativa</p>
         </div>
 
     </section>
@@ -119,9 +82,8 @@
         <div class="container">
 
             <div class="section-header">
-                <span class="section-label">DESCUBRE CEUTA</span>
                 <h2>Instalaciones deportivas</h2>
-                <p>Encuentra el lugar perfecto para tu próximo partido.</p>
+                <p id="installation-count" role="status"></p>
             </div>
 
             <!-- Las tarjetas se generan desde js/data.js -->
@@ -144,9 +106,7 @@
             <div class="section-header auctions-header">
 
                 <div>
-                    <span class="section-label">🔥 SUBASTAS ENTRE USUARIOS</span>
-
-                    <h2>Juega más. Paga menos.</h2>
+                    <h2>Subastas de pistas</h2>
 
                     <p>
                         ¿No puedes ir a tu reserva? Súbela a subasta y deja que
@@ -334,7 +294,8 @@
     <script src="js/data.js"></script>
     <script src="js/store.js"></script>
     <script src="js/main.js"></script>
-    <script src="js/session-nav.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/subastas.js"></script>
 
 </body>
 </html>
