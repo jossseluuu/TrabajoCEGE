@@ -30,6 +30,11 @@ const shareBookingOption = document.getElementById("share-booking-option");
 const agenda = document.getElementById("agenda-semanal");
 const agendaDays = document.getElementById("agenda-days");
 const agendaActivity = document.getElementById("agenda-activity");
+const schedule = document.getElementById("horarios-del-dia");
+const scheduleScroll = document.getElementById("schedule-scroll");
+const scheduleHead = document.getElementById("schedule-head");
+const scheduleBody = document.getElementById("schedule-body");
+const scheduleSelection = document.getElementById("schedule-selection");
 const agendaDayFormat = new Intl.DateTimeFormat("es-ES", {
     weekday: "short", day: "numeric", month: "short", timeZone: "UTC",
 });
@@ -44,6 +49,75 @@ function shiftDate(date, days) {
 function ownerLabel(booking) {
     if (booking.userId === Store.usuarioActual()?.id) return "Tú";
     return booking.mostrarNombre ? Store.getUsuario(booking.userId)?.nombre || "Usuario" : "Nombre no compartido";
+}
+
+function dayBookings(facility, date) {
+    return Store.reservasParaAgenda().filter((booking) => booking.facility === facility.id && booking.date === date);
+}
+
+function syncScheduleSelection() {
+    const court = form.querySelector('input[name="court"]:checked')?.value;
+    const time = timeSelect.value;
+    for (const slot of scheduleBody.querySelectorAll("button")) {
+        slot.setAttribute("aria-pressed", String(slot.dataset.time === time && slot.dataset.court === court));
+    }
+    scheduleSelection.hidden = !court || !time;
+    scheduleSelection.textContent = court && time ? `Turno elegido: ${court}, ${time}.` : "";
+}
+
+function renderSchedule() {
+    if (schedule.hidden) return;
+    const facility = facilities.find(({ id }) => id === Number(facilitySelect.value));
+    const date = dateInput.value;
+    scheduleScroll.hidden = !date;
+    document.getElementById("schedule-empty").hidden = Boolean(date);
+    if (!date) {
+        scheduleSelection.hidden = true;
+        return;
+    }
+
+    const now = ceutaDateTime();
+    const reserved = new Set(dayBookings(facility, date).map(({ court, time }) => `${time}|${court}`));
+    document.getElementById("schedule-caption").textContent = `${facility.nombre} · ${agendaDayFormat.format(new Date(`${date}T00:00:00Z`))}`;
+    const heading = document.createElement("tr");
+    for (const title of ["Hora", ...facility.pistas]) {
+        const cell = document.createElement("th");
+        cell.scope = "col";
+        cell.textContent = title;
+        heading.append(cell);
+    }
+    scheduleHead.replaceChildren(heading);
+
+    scheduleBody.replaceChildren(...times.map((time) => {
+        const row = document.createElement("tr");
+        const hour = document.createElement("th");
+        hour.scope = "row";
+        hour.textContent = time;
+        row.append(hour);
+        for (const court of facility.pistas) {
+            const cell = document.createElement("td");
+            const taken = reserved.has(`${time}|${court}`);
+            const past = `${date}T${time}` <= now;
+            const available = !taken && !past;
+            const state = document.createElement(available ? "button" : "span");
+            state.className = `schedule-state ${available ? "schedule-free" : taken ? "schedule-booked" : "schedule-past"}`;
+            state.textContent = available ? "Disponible" : taken ? "Ocupada" : "Pasado";
+            if (available) {
+                state.type = "button";
+                state.dataset.time = time;
+                state.dataset.court = court;
+                state.setAttribute("aria-label", `Disponible: ${court}, ${time}`);
+                state.addEventListener("click", () => {
+                    timeSelect.value = time;
+                    updateCourtAvailability(court);
+                });
+            }
+            cell.append(state);
+            row.append(cell);
+        }
+        return row;
+    }));
+    syncScheduleSelection();
 }
 
 function renderAgenda() {
@@ -122,19 +196,16 @@ function renderAgenda() {
     }
 }
 
-function updateCourtAvailability() {
+function updateCourtAvailability(preferredCourt = form.querySelector('input[name="court"]:checked')?.value) {
     const facility = facilities.find(({ id }) => id === Number(facilitySelect.value));
     const date = dateInput.value;
     const time = timeSelect.value;
-    const selectedCourt = form.elements.namedItem("court")?.value;
     const hasSlot = Boolean(date && times.includes(time));
     const futureSlot = hasSlot && `${date}T${time}` > ceutaDateTime();
-    const reservations = Store.reservasParaAgenda();
-    const reserved = new Map(reservations.filter((booking) =>
-        booking.facility === facility.id && booking.date === date && booking.time === time
-    ).map((booking) => [booking.court, booking]));
+    const reserved = new Map(dayBookings(facility, date).filter((booking) => booking.time === time)
+        .map((booking) => [booking.court, booking]));
     const available = futureSlot ? facility.pistas.filter((court) => !reserved.has(court)) : [];
-    const selected = available.includes(selectedCourt) ? selectedCourt : available[0];
+    const selected = available.includes(preferredCourt) ? preferredCourt : available[0];
 
     if (!hasSlot) courtStatus.textContent = "Elige fecha y hora para ver la disponibilidad.";
     else if (!futureSlot) courtStatus.textContent = "Elige un turno futuro.";
@@ -161,6 +232,7 @@ function updateCourtAvailability() {
         return option;
     }));
     submitButton.disabled = !available.length;
+    syncScheduleSelection();
 }
 
 function showReservations() {
@@ -243,11 +315,13 @@ function updateFacility() {
     facilityInformation.href = facility.informacion || "";
     locationSection.hidden = false;
     renderAgenda();
+    renderSchedule();
 }
 
 for (const { nombre, id } of selectableFacilities) facilitySelect.add(new Option(nombre, id));
 if (requestedFacility) facilitySelect.value = selectedId;
 dateInput.min = ceutaDateTime().slice(0, 10);
+dateInput.value = dateInput.min;
 timeSelect.add(new Option("Selecciona una hora", ""));
 for (const time of times) timeSelect.add(new Option(time, time));
 updateFacility();
@@ -258,9 +332,14 @@ dateInput.addEventListener("change", () => {
     if (dateInput.value) agendaDate = dateInput.value;
     updateCourtAvailability();
     renderAgenda();
+    renderSchedule();
 });
-timeSelect.addEventListener("change", updateCourtAvailability);
-window.addEventListener("pageshow", updateCourtAvailability);
+timeSelect.addEventListener("change", () => updateCourtAvailability());
+courtOptions.addEventListener("change", syncScheduleSelection);
+window.addEventListener("pageshow", () => {
+    updateCourtAvailability();
+    renderSchedule();
+});
 for (const [id, offset] of [["previous-week", -7], ["next-week", 7]]) {
     document.getElementById(id).addEventListener("click", () => {
         agendaDate = shiftDate(agendaDate, offset);
@@ -295,6 +374,7 @@ form.addEventListener("submit", async (event) => {
         statusMessage.textContent = error.message;
     } finally {
         updateCourtAvailability();
+        renderSchedule();
     }
 });
 
@@ -303,12 +383,15 @@ document.addEventListener("datos-cambiados", () => {
     showReservations();
     updateCourtAvailability();
     renderAgenda();
+    renderSchedule();
 });
 
 // Hay que haber iniciado sesión para reservar
 Store.inicializar().then(() => {
     if (!requireLogin()) return;
+    schedule.hidden = false;
     showReservations();
     updateCourtAvailability();
     renderAgenda();
+    renderSchedule();
 });

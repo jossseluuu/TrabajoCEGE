@@ -28,6 +28,7 @@
             <h1 id="reservation-title">Reservar pista</h1>
             <p id="reservation-help">Los turnos duran 1 hora. Una pista solo puede tenerla un usuario por turno.</p>
             <p id="football-booking-note" hidden>La reserva en CeutaPlay es de prueba. Consulta con el gestor del recinto para confirmar el acceso y la tarifa oficial.</p>
+            <p><a class="login-btn" href="#horarios-del-dia">Comparar horarios</a></p>
             <p><a class="login-btn" href="#agenda-semanal">Ver agenda semanal</a></p>
         </header>
         <div class="reservation-layout reservation-layout-preview">
@@ -77,6 +78,22 @@
                 <a id="facility-information" target="_blank" rel="noopener noreferrer" hidden>Ficha de la instalación</a>
             </section>
         </div>
+        <section id="horarios-del-dia" class="reservation-panel weekly-agenda" aria-labelledby="schedule-title" hidden>
+            <div class="agenda-header">
+                <h2 id="schedule-title">Horarios del día</h2>
+                <a href="#slot-title" class="login-btn">Volver al formulario</a>
+            </div>
+            <p>Selecciona una casilla verde para cargar ese turno en el formulario.</p>
+            <p id="schedule-selection" role="status" hidden></p>
+            <p id="schedule-empty" hidden>Elige una fecha en el formulario para ver los horarios.</p>
+            <div id="schedule-scroll" class="schedule-scroll" role="region" tabindex="0" aria-labelledby="schedule-title">
+                <table id="schedule-table" class="schedule-table">
+                    <caption id="schedule-caption"></caption>
+                    <thead id="schedule-head"></thead>
+                    <tbody id="schedule-body"></tbody>
+                </table>
+            </div>
+        </section>
         <section class="reservation-panel weekly-agenda" aria-labelledby="reviews-title">
             <h2 id="reviews-title">Opiniones</h2>
             <p id="review-summary" role="status"></p>

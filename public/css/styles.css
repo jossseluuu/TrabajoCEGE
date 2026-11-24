@@ -262,6 +262,7 @@ nav a[aria-current="page"] {
 }
 
 .facility-map-layout {
+    --map-panel-height: clamp(380px, 65vh, 650px);
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(290px, 365px);
     gap: 20px;
@@ -277,7 +278,7 @@ nav a[aria-current="page"] {
 }
 
 .facility-map {
-    height: clamp(380px, 65vh, 650px);
+    height: var(--map-panel-height);
     border: 1px solid #e2e8f0;
     border-radius: 18px;
     background: #eff6ff;
@@ -360,9 +361,26 @@ nav a[aria-current="page"] {
 }
 
 .map-catalogue-link:focus-visible,
+.map-locations:focus-visible,
 .map-location-actions :focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: 3px;
+}
+
+@media (min-width: 801px) {
+    .facility-map:not([hidden]) + .map-directory {
+        display: flex;
+        flex-direction: column;
+        height: var(--map-panel-height);
+    }
+
+    .facility-map:not([hidden]) + .map-directory .map-locations {
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior-y: contain;
+        scrollbar-gutter: stable;
+        padding-inline-end: 6px;
+    }
 }
 
 @media (max-width: 800px) {
@@ -553,6 +571,87 @@ nav a[aria-current="page"] {
 .weekly-agenda {
     margin-top: 20px;
     scroll-margin-top: 145px;
+}
+
+#slot-title {
+    scroll-margin-top: 145px;
+}
+
+.schedule-scroll {
+    overflow-x: auto;
+    margin-top: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+}
+
+.schedule-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.875rem;
+}
+
+.schedule-table caption {
+    padding: 12px;
+    color: var(--text);
+    text-align: left;
+    font-weight: 600;
+}
+
+.schedule-table th,
+.schedule-table td {
+    min-width: 112px;
+    padding: 6px;
+    border-top: 1px solid #e2e8f0;
+    text-align: center;
+}
+
+.schedule-table th {
+    background: var(--light);
+}
+
+.schedule-table tr > th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    min-width: 68px;
+    border-right: 1px solid #e2e8f0;
+}
+
+.schedule-state {
+    display: block;
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.schedule-free {
+    background: #f0fdf4;
+    color: #14532d;
+}
+
+.schedule-free:hover,
+.schedule-free[aria-pressed="true"] {
+    border-color: #166534;
+    background: #dcfce7;
+}
+
+.schedule-booked {
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+.schedule-past {
+    background: #f1f5f9;
+    color: var(--text);
+}
+
+.schedule-scroll:focus-visible,
+.schedule-free:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
 }
 
 .review-form {
