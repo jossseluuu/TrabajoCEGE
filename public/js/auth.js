@@ -97,18 +97,9 @@ const Auth = (() => {
         }
     }
 
+    // La cabecera la dibuja nav.js (es común a todas las páginas)
     function pintarNavbar() {
-        const zona = document.getElementById("nav-actions");
-        const usuario = Store.usuarioActual();
-
-        if (usuario) {
-            zona.innerHTML = `
-                <button type="button" class="login-btn" data-accion="logout">Cerrar sesión</button>`;
-        } else {
-            zona.innerHTML = `
-                <button type="button" class="login-btn" data-accion="login">Iniciar sesión</button>
-                <button type="button" class="register-btn" data-accion="registro">Registrarse</button>`;
-        }
+        if (window.Nav) Nav.pintar();
     }
 
     function iniciar() {
@@ -123,18 +114,14 @@ const Auth = (() => {
             enlace.addEventListener("click", () => mostrarPestana(enlace.dataset.irA));
         });
 
-        // Botones del menú
-        document.getElementById("nav-actions").addEventListener("click", async (event) => {
+        // Botones "Iniciar sesión" / "Registrarse" de la cabecera (nav.js la
+        // vuelve a dibujar, por eso se escucha en la cabecera y no en los botones).
+        // "Cerrar sesión" lo gestiona nav.js.
+        document.getElementById("site-header").addEventListener("click", (event) => {
             const boton = event.target.closest("[data-accion]");
             if (!boton) return;
             if (boton.dataset.accion === "login") abrir("login");
             if (boton.dataset.accion === "registro") abrir("registro");
-            if (boton.dataset.accion === "logout") {
-                await Store.cerrarSesion();
-                pintarNavbar();
-                document.dispatchEvent(new CustomEvent("sesion-cambiada"));
-                UI.toast("Has cerrado sesión.");
-            }
         });
 
         // Iniciar sesión
@@ -207,9 +194,6 @@ const Auth = (() => {
             document.dispatchEvent(new CustomEvent("sesion-cambiada"));
             UI.toast("Datos de ejemplo restablecidos.");
         });
-
-        // Si la sesión cambia desde fuera (otra pestaña, caducidad…)
-        document.addEventListener("sesion-cambiada", pintarNavbar);
 
         pintarNavbar();
     }

@@ -1,0 +1,134 @@
+// Cabecera común de todas las páginas: logo, menú y zona de usuario
+// (Iniciar sesión / Registrarse, o el nombre del usuario, Panel admin y Salir).
+//
+// Cada página solo necesita:
+//   <header class="navbar" id="site-header" data-pagina="inicio"></header>
+// y cargar este archivo después de store.js. Valores de data-pagina:
+// inicio, mapa, reservas, perfil, admin, login, registro.
+//
+// En la página principal los botones de entrar/registrarse abren la ventana
+// de auth.js; en el resto llevan a login.html y vuelven después a la página.
+
+const Nav = (() => {
+
+    const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+    let header;
+    let listo = false; // false hasta que Store sabe si hay sesión (evita parpadeos)
+
+    function paginaActual() {
+        return header.dataset.pagina || "";
+    }
+
+    function enlaces(usuario) {
+        const enInicio = paginaActual() === "inicio";
+        const base = enInicio ? "" : "index.html";
+        const lista = [
+            { href: `${base}#inicio`, texto: "Inicio", pagina: "inicio" },
+            { href: `${base}#instalaciones`, texto: "Instalaciones" },
+            { href: "mapa.html", texto: "Mapa", pagina: "mapa" },
+            { href: "reservas.html", texto: "Reservar", pagina: "reservas" },
+            { href: `${base}#subastas`, texto: "Subastas" },
+        ];
+        if (usuario && usuario.admin) {
+            lista.push({ href: "admin.html", texto: "Panel admin", pagina: "admin", clase: "nav-admin" });
+        }
+        return lista.map((e) => `
+            <a href="${e.href}" class="${e.clase || ""}"
+               ${e.pagina && e.pagina === paginaActual() ? 'aria-current="page"' : ""}>${e.texto}</a>`).join("");
+    }
+
+    function volverA() {
+        const pagina = location.pathname.split("/").pop() || "index.html";
+        return encodeURIComponent(pagina + location.search);
+    }
+
+    function acciones(usuario) {
+        if (!listo) return `<span class="nav-loading" aria-hidden="true"></span>`;
+
+        if (usuario) {
+            const inicial = esc((usuario.nombre || "?").trim().charAt(0).toUpperCase());
+            return `
+                <a class="user-chip" href="perfil.html" title="Mi perfil (${esc(usuario.email)})"
+                   ${paginaActual() === "perfil" ? 'aria-current="page"' : ""}>
+                    <span class="user-avatar" aria-hidden="true">${inicial}</span>
+                    <span class="user-name">${esc(usuario.nombre)}</span>
+                    ${usuario.admin ? `<span class="admin-badge">ADMIN</span>` : ""}
+                </a>
+                <button type="button" class="login-btn" data-nav="logout">Cerrar sesión</button>`;
+        }
+
+        // En la portada existe la ventana de login (auth.js)
+        if (document.getElementById("auth-modal")) {
+            return `
+                <button type="button" class="login-btn" data-accion="login">Iniciar sesión</button>
+                <button type="button" class="register-btn" data-accion="registro">Registrarse</button>`;
+        }
+        const volver = ["login", "registro"].includes(paginaActual()) ? location.search : `?volver=${volverA()}`;
+        return `
+            <a class="login-btn" href="login.html${volver}" ${paginaActual() === "login" ? 'aria-current="page"' : ""}>Iniciar sesión</a>
+            <a class="register-btn" href="registro.html${volver}">Registrarse</a>`;
+    }
+
+    function pintar() {
+        if (!header) return;
+        const usuario = listo ? Store.usuarioActual() : null;
+        const abierto = header.classList.contains("menu-abierto");
+        header.innerHTML = `
+            <div class="container nav-content">
+                <a href="index.html" class="logo">CEUTA<span>PLAY</span></a>
+                <button type="button" class="nav-toggle" data-nav="menu" aria-expanded="${abierto}"
+                        aria-controls="nav-menu" aria-label="Abrir menú">☰</button>
+                <div class="nav-menu" id="nav-menu">
+                    <nav aria-label="Navegación principal">${enlaces(usuario)}</nav>
+                    <div class="nav-actions" id="nav-actions">${acciones(usuario)}</div>
+                </div>
+            </div>`;
+    }
+
+    async function cerrarSesion() {
+        await Store.cerrarSesion();
+        // Las páginas privadas (perfil, admin, reservas) vuelven a la portada
+        if (document.body.hasAttribute("data-requiere-login")) {
+            location.replace("index.html");
+            return;
+        }
+        document.dispatchEvent(new CustomEvent("sesion-cambiada"));
+        if (window.UI) UI.toast("Has cerrado sesión.");
+    }
+
+    function iniciar() {
+        header = document.getElementById("site-header");
+        if (!header) return;
+        pintar();
+
+        header.addEventListener("click", (event) => {
+            const boton = event.target.closest("[data-nav]");
+            if (boton && boton.dataset.nav === "logout") cerrarSesion();
+            if (boton && boton.dataset.nav === "menu") {
+                const abierto = header.classList.toggle("menu-abierto");
+                boton.setAttribute("aria-expanded", abierto);
+            }
+            // Al elegir un enlace del menú en el móvil, se cierra
+            if (event.target.closest(".nav-menu a")) header.classList.remove("menu-abierto");
+        });
+
+        document.addEventListener("sesion-cambiada", pintar);
+
+        Store.inicializar()
+            .catch((error) => console.error(error))
+            .finally(() => {
+                listo = true;
+                pintar();
+            });
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", iniciar);
+    } else {
+        iniciar();
+    }
+
+    return { pintar };
+})();

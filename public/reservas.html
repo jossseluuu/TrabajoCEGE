@@ -4,25 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reservar pista | CeutaPlay</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%8E%BE%3C/text%3E%3C/svg%3E">
     <link rel="stylesheet" href="css/styles.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="js/config.js" defer></script>
     <script src="js/data.js" defer></script>
     <script src="js/store.js" defer></script>
+    <script src="js/nav.js" defer></script>
     <script src="js/booking-storage.js" defer></script>
     <script src="js/reservas.js" defer></script>
     <script src="js/opiniones.js" defer></script>
 </head>
-<body>
-    <header class="navbar">
-        <div class="container nav-content">
-            <a href="index.html" class="logo">CEUTA<span>PLAY</span></a>
-            <div class="nav-actions">
-                <a href="index.html#instalaciones" class="login-btn">Volver a instalaciones</a>
-                <a href="perfil.html" class="register-btn">Mi perfil</a>
-            </div>
-        </div>
-    </header>
+<body data-requiere-login>
+    
+    <!-- Cabecera común: la dibuja js/nav.js -->
+    <header class="navbar" id="site-header" data-pagina="reservas"></header>
     <main class="container reservation-page" aria-labelledby="reservation-title">
         <header class="reservation-heading">
             <h1 id="reservation-title">Reservar pista</h1>

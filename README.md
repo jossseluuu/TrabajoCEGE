@@ -33,13 +33,18 @@ TrabajoGabi/
 │   └── workflows/
 │       └── deploy.yml        ← publica main, dev y devep en GitHub Pages
 ├── supabase/
-│   └── schema.sql            ← base de datos del servidor (pegar en Supabase)
+│   ├── schema.sql            ← base de datos del servidor (pegar en Supabase)
+│   ├── admin.sql             ← permisos de administrador y panel admin
+│   ├── opiniones.sql         ← actualización: opiniones compartidas
+│   └── reservas-sociales.sql ← actualización: mostrar nombre en la agenda
 ├── public/                   ← TODO lo que hay aquí es lo que se publica
 │   ├── index.html            ← página principal (instalaciones + subastas)
 │   ├── login.html            ← iniciar sesión
 │   ├── registro.html         ← crear cuenta
 │   ├── perfil.html           ← mis reservas y mis subastas
-│   ├── reservas.html         ← reservar pistas de pádel
+│   ├── reservas.html         ← reservar pistas (con opiniones y agenda)
+│   ├── mapa.html             ← mapa de instalaciones
+│   ├── admin.html            ← panel de administración (solo admins)
 │   ├── img/
 │   ├── css/
 │   │   └── styles.css
@@ -48,12 +53,15 @@ TrabajoGabi/
 │       ├── data.js           ← deportes, instalaciones y datos de ejemplo (editar aquí)
 │       ├── store.js          ← capa de datos: cuentas, subastas, pujas y reservas
 │       ├── main.js           ← pinta las instalaciones y gestiona el buscador
-│       ├── auth.js           ← ventana de login/registro y menú de usuario
+│       ├── nav.js            ← cabecera común de todas las páginas (menú y sesión)
+│       ├── auth.js           ← ventana de login/registro de la portada
 │       ├── subastas.js       ← subastas: listado, crear, pujar, cuenta atrás
 │       ├── login.js          ← páginas login.html y registro.html
 │       ├── booking-storage.js← utilidades de reservas
 │       ├── reservas.js       ← página de reservas
-│       └── perfil.js         ← página de perfil
+│       ├── perfil.js         ← página de perfil
+│       ├── admin.js          ← panel de administración
+│       ├── mapa.js, opiniones.js, portada.js
 └── README.md
 ```
 
@@ -66,6 +74,13 @@ TrabajoGabi/
 - Cuenta atrás en directo, aviso de *"Te han superado"*, ganador al terminar, filtros (**En curso**, **Finalizadas**, **Mis subastas**, **Mis pujas**) y cancelación mientras no haya pujas.
 - **Reservas** (`reservas.html`): una pista solo puede tenerla un usuario por turno. La agenda muestra la ocupación semanal y la actividad por día. Al reservar se puede elegir mostrar el nombre en la agenda.
 - **Perfil** (`perfil.html`): reservas activas y anteriores, subastas creadas, pujas en curso y subastas ganadas.
+- **Subastas mejoradas:** resumen (en curso, terminan pronto, pujas, ahorro medio), filtro por deporte y orden, ahorro frente al precio normal de la pista, barra de tiempo, avisos en directo cuando te superan o ganas, y crear la subasta a partir de una de tus reservas. El formulario ya no deja elegir horas pasadas ni duraciones que terminen después del partido.
+- **Administración** (`admin.html`): las cuentas administradoras ven a todos los usuarios (con su correo y actividad), pueden cancelar cualquier subasta y borrar cualquier reserva. En el menú les aparece **Panel admin**.
+
+### 🛡️ Cuenta de administrador
+
+1. Ejecuta [`supabase/admin.sql`](supabase/admin.sql) en el SQL Editor de Supabase (una vez). Marca como administrador a `admin@ceutaplay.es`; para añadir otro, cambia el correo de la última línea y vuelve a ejecutarla.
+2. La contraseña **no está en el repositorio**: se guarda en `privado/credenciales-admin.md`, que está en el `.gitignore`. Pídesela a quien gestione el proyecto.
 
 ### Dos modos de funcionamiento
 

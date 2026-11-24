@@ -277,9 +277,18 @@ const Store = (() => {
                 return;
             }
             let nombre = usuario.user_metadata && usuario.user_metadata.nombre;
-            const perfil = await client.from("perfiles").select("nombre").eq("id", usuario.id).maybeSingle();
+            // es_admin solo existe si se ha ejecutado supabase/admin.sql
+            let perfil = await client.from("perfiles").select("nombre, es_admin").eq("id", usuario.id).maybeSingle();
+            if (perfil.error) {
+                perfil = await client.from("perfiles").select("nombre").eq("id", usuario.id).maybeSingle();
+            }
             if (perfil.data) nombre = perfil.data.nombre;
-            sesion = { id: usuario.id, email: usuario.email, nombre: nombre || usuario.email.split("@")[0] };
+            sesion = {
+                id: usuario.id,
+                email: usuario.email,
+                nombre: nombre || usuario.email.split("@")[0],
+                admin: Boolean(perfil.data && perfil.data.es_admin),
+            };
         }
 
         async function inicializar() {
@@ -447,13 +456,44 @@ const Store = (() => {
             }, { onConflict: "instalacion_id,usuario_id" }));
         }
 
+        // ---------- administración (requiere supabase/admin.sql) ----------
+
+        function exigirAdmin() {
+            exigirSesion();
+            if (!sesion.admin) throw new Error("Solo un administrador puede hacer esto.");
+        }
+
+        async function adminListarUsuarios() {
+            exigirAdmin();
+            const filas = comprobar(await client.rpc("admin_listar_usuarios"));
+            return filas.map((u) => ({
+                id: u.id, nombre: u.nombre, email: u.email, creado: Date.parse(u.creado),
+                admin: u.es_admin, reservas: Number(u.reservas), subastas: Number(u.subastas), pujas: Number(u.pujas),
+            }));
+        }
+
+        async function adminCancelarSubasta(subastaId) {
+            exigirAdmin();
+            comprobar(await client.rpc("admin_cancelar_subasta", { p_subasta: subastaId }));
+            await recargar("subastas");
+        }
+
+        async function adminBorrarReserva(id) {
+            exigirAdmin();
+            const filas = comprobar(await client.from("reservas").delete().eq("id", id).select("id"));
+            if (!filas.length) throw new Error("No se ha podido borrar (¿has ejecutado supabase/admin.sql?).");
+            await recargar("reservas");
+        }
+
         return {
             inicializar, ahora, registrar, login, cerrarSesion, usuarioActual, getUsuario,
             listarSubastas, getSubasta, crearSubasta, pujar, cancelarSubasta,
             misReservas, pistaOcupada, reservar, cancelarReserva,
             reservasParaAgenda: () => sesion ? datos.reservas : [],
+            todasLasReservas: () => datos.reservas,
             permiteMostrarNombre: () => nombresEnAgenda,
             listarOpiniones, guardarOpinion,
+            adminListarUsuarios, adminCancelarSubasta, adminBorrarReserva,
         };
     }
 
@@ -513,7 +553,7 @@ const Store = (() => {
 
         function usuarioPublico(usuario) {
             if (!usuario) return null;
-            return { id: usuario.id, nombre: usuario.nombre, email: usuario.email };
+            return { id: usuario.id, nombre: usuario.nombre, email: usuario.email, admin: Boolean(usuario.admin) };
         }
 
         // ---------- cuentas ----------
@@ -756,13 +796,53 @@ const Store = (() => {
             avisar("datos-cambiados");
         }
 
+        // ---------- administración ----------
+        // En modo local no hay cuenta de administrador por defecto: se puede
+        // marcar una cuenta poniendo "admin": true en su usuario de localStorage.
+
+        function exigirAdmin() {
+            const usuario = exigirSesion();
+            if (!usuario.admin) throw new Error("Solo un administrador puede hacer esto.");
+            return usuario;
+        }
+
+        async function adminListarUsuarios() {
+            exigirAdmin();
+            const subastas = getSubastasRaw();
+            const reservas = todasLasReservas();
+            return getUsuarios().map((u) => ({
+                id: u.id, nombre: u.nombre, email: u.email, creado: u.creado, admin: Boolean(u.admin),
+                reservas: reservas.filter((r) => r.userId === u.id).length,
+                subastas: subastas.filter((s) => s.vendedorId === u.id).length,
+                pujas: subastas.reduce((n, s) => n + s.pujas.filter((p) => p.usuarioId === u.id).length, 0),
+            })).sort((a, b) => b.creado - a.creado);
+        }
+
+        async function adminCancelarSubasta(subastaId) {
+            exigirAdmin();
+            const subastas = getSubastasRaw();
+            const raw = subastas.find((s) => s.id === subastaId);
+            if (!raw) throw new Error("La subasta no existe.");
+            raw.cancelada = true;
+            guardar(KEYS.subastas, subastas);
+            avisar("datos-cambiados");
+        }
+
+        async function adminBorrarReserva(id) {
+            exigirAdmin();
+            guardar(KEYS.reservas, todasLasReservas().filter((r) => r.id !== id));
+            avisar("datos-cambiados");
+        }
+
         return {
             inicializar, reiniciarDemo, ahora, registrar, login, cerrarSesion, usuarioActual, getUsuario,
             listarSubastas, getSubasta, crearSubasta, pujar, cancelarSubasta,
             misReservas, pistaOcupada, reservar, cancelarReserva,
             reservasParaAgenda: () => usuarioActual() ? todasLasReservas() : [],
+            todasLasReservas,
             permiteMostrarNombre: () => true,
             listarOpiniones, guardarOpinion,
+            adminListarUsuarios, adminCancelarSubasta, adminBorrarReserva,
         };
     }
 

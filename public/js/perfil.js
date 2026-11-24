@@ -91,11 +91,6 @@ function showProfile() {
     profilePanel.hidden = false;
 }
 
-document.getElementById("logout-btn").addEventListener("click", async () => {
-    await Store.cerrarSesion();
-    location.replace("index.html");
-});
-
 Store.inicializar().then(() => {
     showProfile();
     window.addEventListener("pageshow", showProfile);

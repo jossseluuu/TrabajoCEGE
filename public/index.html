@@ -7,37 +7,14 @@
     <title>CeutaPlay | Reserva tu pista</title>
 
     <!-- Rutas relativas: necesarias para que funcione en https://usuario.github.io/TrabajoCEGE/ -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%8E%BE%3C/text%3E%3C/svg%3E">
     <link rel="stylesheet" href="css/styles.css">
     <script src="js/portada.js" defer></script>
 </head>
 
 <body class="home-page">
-
-    <!-- MENÚ -->
-
-    <header class="navbar">
-        <div class="container nav-content">
-
-            <a href="index.html" class="logo">
-                CEUTA<span>PLAY</span>
-            </a>
-
-            <nav aria-label="Navegación principal">
-                <a href="#inicio" aria-current="page">Inicio</a>
-                <a href="#instalaciones">Instalaciones</a>
-                <a href="mapa.html">Mapa</a>
-                <a href="#subastas">Subastas</a>
-                <a href="perfil.html">Mi perfil</a>
-            </nav>
-
-            <!-- Se rellena desde js/auth.js según haya sesión o no -->
-            <div class="nav-actions" id="nav-actions">
-                <a class="login-btn" href="login.html">Iniciar sesión</a>
-                <a class="register-btn" href="registro.html">Registrarse</a>
-            </div>
-
-        </div>
-    </header>
+    <!-- Cabecera común: la dibuja js/nav.js -->
+    <header class="navbar" id="site-header" data-pagina="inicio"></header>
 
     <!-- PORTADA -->
 
@@ -121,13 +98,37 @@
 
             </div>
 
-            <div class="auction-filters" role="group" aria-label="Filtrar subastas">
-                <button type="button" class="auction-filter active" data-filtro="activas" aria-pressed="true">
-                    En curso <span class="filter-count" id="contador-activas">0</span>
-                </button>
-                <button type="button" class="auction-filter" data-filtro="finalizadas" aria-pressed="false">Finalizadas</button>
-                <button type="button" class="auction-filter" data-filtro="mias" aria-pressed="false">Mis subastas</button>
-                <button type="button" class="auction-filter" data-filtro="pujas" aria-pressed="false">Mis pujas</button>
+            <!-- Resumen: se rellena desde js/subastas.js -->
+            <dl class="auction-stats" id="subastas-stats"></dl>
+
+            <div class="auction-bar">
+                <div class="auction-filters" role="group" aria-label="Filtrar subastas">
+                    <button type="button" class="auction-filter active" data-filtro="activas" aria-pressed="true">
+                        En curso <span class="filter-count" id="contador-activas">0</span>
+                    </button>
+                    <button type="button" class="auction-filter" data-filtro="finalizadas" aria-pressed="false">Finalizadas</button>
+                    <button type="button" class="auction-filter" data-filtro="mias" aria-pressed="false">Mis subastas</button>
+                    <button type="button" class="auction-filter" data-filtro="pujas" aria-pressed="false">Mis pujas</button>
+                </div>
+
+                <div class="auction-toolbar">
+                    <label>
+                        <span>Deporte</span>
+                        <select id="subastas-deporte">
+                            <option value="">Todos</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Ordenar</span>
+                        <select id="subastas-orden">
+                            <option value="fin">Terminan antes</option>
+                            <option value="precio">Precio más bajo</option>
+                            <option value="ahorro">Mayor ahorro</option>
+                            <option value="pujas">Más pujas</option>
+                            <option value="recientes">Más recientes</option>
+                        </select>
+                    </label>
+                </div>
             </div>
 
             <!-- Las tarjetas se generan desde js/subastas.js -->
@@ -223,6 +224,13 @@
             <h2 id="create-title">Subasta tu reserva</h2>
 
             <form id="create-form" class="modal-form">
+                <div id="crear-desde-reserva-campo" hidden>
+                    <label for="crear-desde-reserva">A partir de una de mis reservas</label>
+                    <select id="crear-desde-reserva">
+                        <option value="">— Rellenar a mano —</option>
+                    </select>
+                </div>
+
                 <label for="crear-instalacion">Instalación</label>
                 <select id="crear-instalacion" name="instalacion" required></select>
 
@@ -251,6 +259,8 @@
                         </select>
                     </div>
                 </div>
+
+                <p class="form-hint" id="crear-precio-ayuda"></p>
 
                 <label for="crear-duracion">Duración de la subasta</label>
                 <select id="crear-duracion" name="duracion" required></select>
@@ -294,6 +304,7 @@
     <script src="js/data.js"></script>
     <script src="js/store.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/nav.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/subastas.js"></script>
 

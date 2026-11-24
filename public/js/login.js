@@ -42,6 +42,11 @@ loginForm.addEventListener("submit", async (event) => {
     }
 });
 
+// Las cuentas de prueba solo existen en modo local (sin servidor)
+if (Store.modo === "remoto") {
+    document.querySelectorAll(".demo-box").forEach((caja) => (caja.hidden = true));
+}
+
 // Si ya hay sesión iniciada no tiene sentido mostrar el formulario
 Store.inicializar().then(() => {
     if (Store.usuarioActual()) location.replace(returnPage());
