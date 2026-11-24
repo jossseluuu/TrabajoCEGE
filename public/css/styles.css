@@ -164,7 +164,7 @@ nav a[aria-current="page"] {
     font-weight: 700;
 }
 
-.login-form input:not([type="radio"]),
+.login-form input:not([type="radio"]):not([type="checkbox"]),
 .login-form select {
     width: 100%;
     margin-bottom: 10px;
@@ -480,6 +480,176 @@ nav a[aria-current="page"] {
 
 .court-option-state {
     margin-inline-start: auto;
+    overflow-wrap: anywhere;
+}
+
+.share-booking {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+}
+
+.share-booking input,
+.agenda-day progress {
+    accent-color: var(--primary);
+}
+
+.weekly-agenda {
+    margin-top: 20px;
+    scroll-margin-top: 145px;
+}
+
+.review-form {
+    display: grid;
+    gap: 8px;
+    max-width: 580px;
+    margin: 16px 0;
+}
+
+.review-rating {
+    border: 0;
+}
+
+.review-rating legend,
+.review-form > label {
+    font-size: 0.875rem;
+    font-weight: 700;
+}
+
+.review-stars {
+    display: flex;
+    gap: 4px;
+}
+
+.review-stars label {
+    position: relative;
+    cursor: pointer;
+}
+
+.review-stars input {
+    position: absolute;
+    opacity: 0;
+}
+
+.review-stars label span {
+    display: grid;
+    min-width: 44px;
+    min-height: 44px;
+    place-items: center;
+    border-radius: 8px;
+    color: #64748b;
+    font-size: 1.75rem;
+}
+
+.review-stars label:has(input:checked) span,
+.review-stars label:has(~ label input:checked) span {
+    color: #92400e;
+    background: #fef3c7;
+}
+
+.review-stars input:focus-visible + span,
+.review-form textarea:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.review-form textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #94a3b8;
+    border-radius: 10px;
+    font: inherit;
+    resize: vertical;
+}
+
+.review-form > button { justify-self: start; }
+.review-form > p { margin: 0; font-size: 0.875rem; }
+
+.review-list {
+    display: grid;
+    gap: 10px;
+    margin-top: 16px;
+    list-style: none;
+}
+
+.review-list li {
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: var(--light);
+    overflow-wrap: anywhere;
+}
+
+.review-display-stars {
+    display: inline-block;
+    margin-inline-start: 10px;
+    color: #92400e;
+    white-space: nowrap;
+}
+
+.agenda-header,
+.agenda-navigation {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.agenda-header { justify-content: space-between; }
+.agenda-range { font-weight: 700; }
+
+.agenda-days {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 8px;
+    margin: 16px 0 24px;
+    list-style: none;
+}
+
+.agenda-day {
+    display: grid;
+    gap: 6px;
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background: var(--light);
+    color: var(--dark);
+    text-align: left;
+    font-size: 0.875rem;
+}
+
+.agenda-day[aria-pressed="true"] {
+    border-color: var(--primary);
+    background: #eff6ff;
+}
+
+.agenda-day:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+.agenda-day progress { width: 100%; }
+
+.agenda-activity {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+    list-style: none;
+}
+
+.agenda-activity li {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 6px 16px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--light);
+    color: var(--text);
+    overflow-wrap: anywhere;
 }
 
 .court-available {
@@ -803,6 +973,14 @@ nav a[aria-current="page"] {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+.card-image-full {
+    background: #eff6ff;
+}
+
+.card-image-full img {
+    object-fit: contain;
 }
 
 .card-image-placeholder {
