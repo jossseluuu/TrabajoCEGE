@@ -27,10 +27,14 @@
                 <a href="#instalaciones">Instalaciones</a>
                 <a href="mapa.html">Mapa</a>
                 <a href="#subastas">Subastas</a>
+                <a href="perfil.html">Mi perfil</a>
             </nav>
 
             <!-- Se rellena desde js/auth.js según haya sesión o no -->
-            <div class="nav-actions" id="nav-actions"></div>
+            <div class="nav-actions" id="nav-actions">
+                <a class="login-btn" href="login.html">Iniciar sesión</a>
+                <a class="register-btn" href="registro.html">Registrarse</a>
+            </div>
 
         </div>
     </header>
@@ -290,7 +294,8 @@
     <script src="js/data.js"></script>
     <script src="js/store.js"></script>
     <script src="js/main.js"></script>
-    <script src="js/session-nav.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/subastas.js"></script>
 
 </body>
 </html>

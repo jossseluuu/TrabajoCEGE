@@ -30,8 +30,12 @@
             <p id="football-booking-note" hidden>La reserva en CeutaPlay es de prueba. Consulta con el gestor del recinto para confirmar el acceso y la tarifa oficial.</p>
             <p><a class="login-btn" href="#agenda-semanal">Ver agenda semanal</a></p>
         </header>
-        <div class="reservation-layout">
-            <section class="reservation-panel" aria-labelledby="slot-title">
+        <div class="reservation-layout reservation-layout-preview">
+            <figure class="reservation-preview" id="reservation-preview" hidden>
+                <div id="reservation-preview-photo" class="reservation-preview-photo"></div>
+                <figcaption id="reservation-preview-caption"></figcaption>
+            </figure>
+            <section class="reservation-panel reservation-slot" aria-labelledby="slot-title">
                 <h2 id="slot-title">Elige tu turno</h2>
                 <form id="reservation-form" class="login-form reservation-form" aria-describedby="reservation-help">
                     <div class="reservation-field">

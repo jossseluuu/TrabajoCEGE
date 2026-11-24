@@ -201,6 +201,27 @@ const INSTALACIONES = [
     },
 ];
 
+// Fotos destinadas al formulario de reserva. El catálogo usa fichas de texto.
+const FOTOS_RESERVA = {
+    1: { src: "https://equidesa.com/media/redactor/Pistas%20de%20padel%20panoramicas%20Cueta%20equidesa%205.JPG", descripcion: "Pistas de pádel de La Marina junto al puerto", credito: "Equidesa" },
+    2: { src: "https://www.opsa.es/wp-content/uploads/2019/11/PHOTO-2019-10-25-21-19-29.jpg", descripcion: "Campo de fútbol José Benoliel", credito: "OPSA" },
+    3: { src: "https://static.wixstatic.com/media/3196bb_254c33eb094244a1a9c47af069a324ed~mv2.jpg/v1/fill/w_1000%2Ch_750%2Cal_c%2Cq_85%2Cusm_0.66_1.00_0.01/3196bb_254c33eb094244a1a9c47af069a324ed~mv2.jpg", descripcion: "Zona deportiva de La Marina", credito: "Parque Marítimo del Mediterráneo" },
+    6: { src: "https://res.cloudinary.com/playtomic/image/upload/v1677764524/pro/tenants/d44c6a04-7b1d-4386-b2be-2e361b50b7ea/1677764523875.jpg", descripcion: "Pistas cubiertas de pádel del Club Loma Margarita", credito: "Playtomic" },
+    9: { src: "https://www.ceutaldia.com/media/ceutaldia/images/2023/05/06/2023050615101832840.jpg", descripcion: "Pista polideportiva de José Zurrón", credito: "Ceuta al Día" },
+    10: { src: "https://www.ceutaldia.com/media/ceutaldia/images/2025/09/24/2025092408171033476.jpg", descripcion: "Gradas de los campos de fútbol del Príncipe", credito: "Ceuta al Día" },
+    11: { src: "https://static.elpueblodeceuta.es/clip/5c75ea57-eb29-4731-b83b-aa242da6b882_16-9-aspect-ratio_1600w_0.jpg", descripcion: "Pista del Polígono Virgen de África", credito: "El Pueblo de Ceuta" },
+    12: { src: "https://album.mediaset.es/eimg/2025/11/11/campo-jose-martinez-pirri-de-ceuta-001-jpeg-16-9-aspect-ratio-default-0_da39.jpg?w=1024", descripcion: "Campo de fútbol José Martínez Pirri", credito: "ElDesmarque" },
+    13: { src: "https://www.ceutaldia.com/media/ceutaldia/images/2017/10/05/2017100513520831605.jpg", descripcion: "Campo de fútbol Emilio Cózar", credito: "Ceuta al Día" },
+    14: { src: "https://www.ceutaactualidad.com/media/ceutaactualidad/images/2024/12/06/2024120622572216518.jpg", descripcion: "Pista deportiva Juan XXIII", credito: "Ceuta Actualidad" },
+    15: { src: "https://www.ceutaactualidad.com/media/ceutaactualidad/images/2024/12/09/2024120913302711187.jpg", descripcion: "Pista interior de Santa Amelia", credito: "Ceuta Actualidad" },
+};
+
+const FOTOS_RESERVA_ILUSTRATIVAS = {
+    "Pádel": { src: "img/padel-loma-colmenar.jpg", descripcion: "Pista de pádel vacía", credito: "Ilustración generada con IA" },
+    "Tenis": FOTOS_RESERVA[3],
+    "Fútbol": FOTOS_RESERVA[2],
+};
+
 const formatoEuros = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", minimumFractionDigits: 0 });
 
 // Usuarios de prueba que se crean la primera vez que se abre la web.
