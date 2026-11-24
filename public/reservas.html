@@ -11,6 +11,7 @@
     <script src="js/store.js" defer></script>
     <script src="js/booking-storage.js" defer></script>
     <script src="js/reservas.js" defer></script>
+    <script src="js/opiniones.js" defer></script>
 </head>
 <body>
     <header class="navbar">
@@ -26,6 +27,8 @@
         <header class="reservation-heading">
             <h1 id="reservation-title">Reservar pista</h1>
             <p id="reservation-help">Los turnos duran 1 hora. Una pista solo puede tenerla un usuario por turno.</p>
+            <p id="football-booking-note" hidden>La reserva en CeutaPlay es de prueba. Consulta con el gestor del recinto para confirmar el acceso y la tarifa oficial.</p>
+            <p><a class="login-btn" href="#agenda-semanal">Ver agenda semanal</a></p>
         </header>
         <div class="reservation-layout">
             <section class="reservation-panel" aria-labelledby="slot-title">
@@ -48,6 +51,10 @@
                         <p id="court-status" role="status"></p>
                         <div id="court-options" class="court-options"></div>
                     </fieldset>
+                    <label class="share-booking" id="share-booking-option" hidden>
+                        <input id="share-booking-name" type="checkbox" disabled>
+                        Mostrar mi nombre en la agenda de esta reserva
+                    </label>
                     <div class="reservation-total" aria-live="polite">
                         <span>Precio de prueba · 1 hora</span>
                         <strong id="booking-price"></strong>
@@ -66,6 +73,46 @@
                 <a id="facility-information" target="_blank" rel="noopener noreferrer" hidden>Ficha de la instalación</a>
             </section>
         </div>
+        <section class="reservation-panel weekly-agenda" aria-labelledby="reviews-title">
+            <h2 id="reviews-title">Opiniones</h2>
+            <p id="review-summary" role="status"></p>
+            <form id="review-form" class="review-form" hidden>
+                <fieldset class="review-rating">
+                    <legend>Tu puntuación</legend>
+                    <div class="review-stars">
+                        <label><input type="radio" name="score" value="1" aria-label="1 estrella" required><span aria-hidden="true">★</span></label>
+                        <label><input type="radio" name="score" value="2" aria-label="2 estrellas"><span aria-hidden="true">★</span></label>
+                        <label><input type="radio" name="score" value="3" aria-label="3 estrellas"><span aria-hidden="true">★</span></label>
+                        <label><input type="radio" name="score" value="4" aria-label="4 estrellas"><span aria-hidden="true">★</span></label>
+                        <label><input type="radio" name="score" value="5" aria-label="5 estrellas"><span aria-hidden="true">★</span></label>
+                    </div>
+                </fieldset>
+                <label for="review-comment">Tu comentario</label>
+                <textarea id="review-comment" rows="3" maxlength="500" required></textarea>
+                <p>Tu nombre visible aparecerá junto a la opinión.</p>
+                <button type="submit" class="register-btn">Publicar opinión</button>
+            </form>
+            <p id="review-status" role="status"></p>
+            <ul id="review-list" class="review-list"></ul>
+        </section>
+        <section id="agenda-semanal" class="reservation-panel weekly-agenda" aria-labelledby="agenda-title" hidden>
+            <div class="agenda-header">
+                <div>
+                    <h2 id="agenda-title">Agenda semanal</h2>
+                    <p id="agenda-facility"></p>
+                </div>
+                <div class="agenda-navigation">
+                    <button id="previous-week" class="login-btn" type="button">Semana anterior</button>
+                    <button id="next-week" class="login-btn" type="button">Semana siguiente</button>
+                </div>
+            </div>
+            <p id="agenda-range" class="agenda-range" aria-live="polite"></p>
+            <p id="agenda-occupancy"></p>
+            <p id="agenda-source"></p>
+            <ul id="agenda-days" class="agenda-days" aria-label="Ocupación por día"></ul>
+            <h3 id="activity-title">Actividad del día</h3>
+            <ul id="agenda-activity" class="agenda-activity" aria-labelledby="activity-title"></ul>
+        </section>
         <section class="reservation-panel reservation-history" aria-labelledby="history-title">
             <h2 id="history-title">Mis reservas</h2>
             <ul id="reservation-list"></ul>

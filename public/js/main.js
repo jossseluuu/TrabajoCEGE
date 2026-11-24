@@ -5,8 +5,9 @@
 function crearTarjetaInstalacion(instalacion) {
     const etiqueta = `<span class="card-tag">${instalacion.deporte}</span>`;
     const imagenAlternativa = instalacion.imagenAlternativa ? ` data-image-fallback="${instalacion.imagenAlternativa}"` : "";
+    const claseEncuadre = instalacion.imagenCompleta ? " card-image-full" : "";
     const imagen = instalacion.imagen
-        ? `<div class="card-image"><img src="${instalacion.imagen}" alt="${instalacion.imagenAlt || ""}"${imagenAlternativa}>${etiqueta}</div>`
+        ? `<div class="card-image${claseEncuadre}"><img src="${instalacion.imagen}" alt="${instalacion.imagenAlt || ""}"${imagenAlternativa}>${etiqueta}</div>`
         : `<div class="card-image card-image-placeholder">Foto pendiente${etiqueta}</div>`;
     const credito = instalacion.fuenteImagen
         ? `<p class="photo-credit"><a href="${instalacion.fuenteImagen}">${instalacion.creditoImagen}</a></p>`
