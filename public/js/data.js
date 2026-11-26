@@ -6,7 +6,22 @@ const DEPORTES = [
     { nombre: "Fútbol", icono: "⚽" },
     { nombre: "Tenis", icono: "🎾" },
     { nombre: "Baloncesto", icono: "🏀" },
+    { nombre: "Kayak", icono: "🛶" },
+    { nombre: "Paddle surf", icono: "🏄" },
+    { nombre: "Piragüismo", icono: "🛶" },
 ];
+
+const CEUTA_KAYAK = {
+    ubicacion: "Playa de la Ribera, Ceuta · junto al Mercado Central",
+    mapa: "Ceuta Kayak, Playa de la Ribera, Ceuta",
+    puntoMapa: [35.88682, -5.31518],
+    nombreMapa: "Ceuta Kayak · Playa de la Ribera",
+    notaPuntoMapa: "Marcador orientativo en la playa de la Ribera.",
+    informacion: "https://www.tur4all.com/resources/ceuta-kayak",
+    contacto: "tel:+34676278086",
+    horario: Array.from({ length: 9 }, (_, index) => `${10 + index}:00`),
+    subastable: false,
+};
 
 const INSTALACIONES = [
     {
@@ -198,6 +213,33 @@ const INSTALACIONES = [
         precioPrueba: 15,
         detalle: "3 pistas de tenis según el directorio de la RFET.",
         informacion: "https://www.rfet.es/es/club/club-de-tenis-ceuta",
+    },
+    {
+        ...CEUTA_KAYAK,
+        id: 16,
+        nombre: "Kayak con Ceuta Kayak",
+        deporte: "Kayak",
+        pistas: ["Kayak 1", "Kayak 2", "Kayak 3"],
+        precioPrueba: 12,
+        detalle: "Alquiler de kayak en la Ribera. Turnos de prueba de una hora.",
+    },
+    {
+        ...CEUTA_KAYAK,
+        id: 17,
+        nombre: "Paddle surf con Ceuta Kayak",
+        deporte: "Paddle surf",
+        pistas: ["Tabla 1", "Tabla 2", "Tabla 3"],
+        precioPrueba: 15,
+        detalle: "Alquiler de tablas de paddle surf. Turnos de prueba de una hora.",
+    },
+    {
+        ...CEUTA_KAYAK,
+        id: 18,
+        nombre: "Piragüismo con Ceuta Kayak",
+        deporte: "Piragüismo",
+        pistas: ["Piragua 1", "Piragua 2"],
+        precioPrueba: 14,
+        detalle: "Alquiler de piragua en la Ribera. Turnos de prueba de una hora.",
     },
 ];
 

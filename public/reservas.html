@@ -24,6 +24,7 @@
             <h1 id="reservation-title">Reservar pista</h1>
             <p id="reservation-help">Los turnos duran 1 hora. Una pista solo puede tenerla un usuario por turno.</p>
             <p id="football-booking-note" hidden>La reserva en CeutaPlay es de prueba. Consulta con el gestor del recinto para confirmar el acceso y la tarifa oficial.</p>
+            <p id="activity-booking-note" hidden>Reserva de prueba en CeutaPlay. Confirma la disponibilidad, el horario y el precio real con Ceuta Kayak.</p>
             <p><a class="login-btn" href="#horarios-del-dia">Comparar horarios</a></p>
             <p><a class="login-btn" href="#agenda-semanal">Ver agenda semanal</a></p>
         </header>
@@ -48,7 +49,7 @@
                         <select id="booking-time" required></select>
                     </div>
                     <fieldset class="court-picker" aria-describedby="court-status">
-                        <legend>Pista</legend>
+                        <legend id="court-label">Pista</legend>
                         <p id="court-status" role="status"></p>
                         <div id="court-options" class="court-options"></div>
                     </fieldset>
@@ -72,6 +73,7 @@
                 <iframe id="location-map" title="Mapa de la instalación" loading="lazy"></iframe>
                 <a id="location-link" target="_blank" rel="noopener noreferrer">Abrir en Google Maps</a>
                 <a id="facility-information" target="_blank" rel="noopener noreferrer" hidden>Ficha de la instalación</a>
+                <a id="facility-contact" hidden>Consultar con Ceuta Kayak</a>
             </section>
         </div>
         <section id="horarios-del-dia" class="reservation-panel weekly-agenda" aria-labelledby="schedule-title" hidden>

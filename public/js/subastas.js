@@ -477,7 +477,7 @@ const Subastas = (() => {
 
         const selReserva = $("crear-desde-reserva");
 
-        selInstalacion.innerHTML = INSTALACIONES.map((i) =>
+        selInstalacion.innerHTML = INSTALACIONES.filter((i) => i.subastable !== false).map((i) =>
             `<option value="${i.id}">${esc(i.nombre)} (${esc(i.deporte)})</option>`).join("");
         selDuracion.innerHTML = DURACIONES.map((d) =>
             `<option value="${d.minutos}" ${d.minutos === 60 ? "selected" : ""}>${d.texto}</option>`).join("");
