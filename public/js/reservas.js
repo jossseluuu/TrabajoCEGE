@@ -23,7 +23,8 @@ const locationNote = document.getElementById("location-note");
 const locationMap = document.getElementById("location-map");
 const locationLink = document.getElementById("location-link");
 const facilityInformation = document.getElementById("facility-information");
-const times = Array.from({ length: 13 }, (_, index) => `${String(index + 9).padStart(2, "0")}:00`);
+const facilityContact = document.getElementById("facility-contact");
+const defaultTimes = Array.from({ length: 13 }, (_, index) => `${String(index + 9).padStart(2, "0")}:00`);
 const submitButton = form.querySelector('button[type="submit"]');
 const shareBooking = document.getElementById("share-booking-name");
 const shareBookingOption = document.getElementById("share-booking-option");
@@ -68,6 +69,7 @@ function syncScheduleSelection() {
 function renderSchedule() {
     if (schedule.hidden) return;
     const facility = facilities.find(({ id }) => id === Number(facilitySelect.value));
+    const times = facility.horario || defaultTimes;
     const date = dateInput.value;
     scheduleScroll.hidden = !date;
     document.getElementById("schedule-empty").hidden = Boolean(date);
@@ -129,6 +131,7 @@ function renderAgenda() {
     }
 
     const facility = facilities.find(({ id }) => id === Number(facilitySelect.value));
+    const times = facility.horario || defaultTimes;
     const weekday = new Date(`${agendaDate}T00:00:00Z`).getUTCDay();
     const monday = shiftDate(agendaDate, -((weekday + 6) % 7));
     const sunday = shiftDate(monday, 6);
@@ -198,6 +201,7 @@ function renderAgenda() {
 
 function updateCourtAvailability(preferredCourt = form.querySelector('input[name="court"]:checked')?.value) {
     const facility = facilities.find(({ id }) => id === Number(facilitySelect.value));
+    const times = facility.horario || defaultTimes;
     const date = dateInput.value;
     const time = timeSelect.value;
     const hasSlot = Boolean(date && times.includes(time));
@@ -209,7 +213,7 @@ function updateCourtAvailability(preferredCourt = form.querySelector('input[name
 
     if (!hasSlot) courtStatus.textContent = "Elige fecha y hora para ver la disponibilidad.";
     else if (!futureSlot) courtStatus.textContent = "Elige un turno futuro.";
-    else courtStatus.textContent = `${available.length} de ${facility.pistas.length} pistas disponibles.`;
+    else courtStatus.textContent = `${available.length} de ${facility.pistas.length} ${facility.contacto ? "equipos" : "pistas"} disponibles.`;
 
     courtOptions.replaceChildren(...facility.pistas.map((court) => {
         const isAvailable = available.includes(court);
@@ -298,10 +302,16 @@ function showFacilityPhoto(facility) {
 
 function updateFacility() {
     const facility = facilities.find(({ id }) => id === Number(facilitySelect.value));
+    const times = facility.horario || defaultTimes;
+    const selectedTime = timeSelect.value;
+    timeSelect.replaceChildren(new Option("Selecciona una hora", ""), ...times.map((time) => new Option(time, time)));
+    if (times.includes(selectedTime)) timeSelect.value = selectedTime;
     showFacilityPhoto(facility);
     updateCourtAvailability();
     reservationTitle.textContent = `Reservar ${facility.deporte.toLowerCase()}`;
     document.getElementById("football-booking-note").hidden = facility.deporte !== "Fútbol";
+    document.getElementById("activity-booking-note").hidden = !facility.contacto;
+    document.getElementById("court-label").textContent = facility.contacto ? "Equipo" : "Pista";
     document.title = `${reservationTitle.textContent} | CeutaPlay`;
     bookingPrice.textContent = formatoEuros.format(facility.precioPrueba);
     const mapQuery = encodeURIComponent(facility.mapa || facility.ubicacion);
@@ -313,6 +323,8 @@ function updateFacility() {
     locationLink.href = `https://www.google.com/maps/search/?api=1&query=${mapQuery}`;
     facilityInformation.hidden = !facility.informacion;
     facilityInformation.href = facility.informacion || "";
+    facilityContact.hidden = !facility.contacto;
+    facilityContact.href = facility.contacto || "";
     locationSection.hidden = false;
     renderAgenda();
     renderSchedule();
@@ -322,8 +334,6 @@ for (const { nombre, id } of selectableFacilities) facilitySelect.add(new Option
 if (requestedFacility) facilitySelect.value = selectedId;
 dateInput.min = ceutaDateTime().slice(0, 10);
 dateInput.value = dateInput.min;
-timeSelect.add(new Option("Selecciona una hora", ""));
-for (const time of times) timeSelect.add(new Option(time, time));
 updateFacility();
 if (window.location.hash === "#ubicacion") locationSection.scrollIntoView();
 
@@ -352,7 +362,7 @@ form.addEventListener("submit", async (event) => {
     const court = new FormData(form).get("court");
     const date = dateInput.value;
     const time = timeSelect.value;
-    if (!facility?.pistas.includes(court) || !date || !times.includes(time) || `${date}T${time}` <= ceutaDateTime()) {
+    if (!facility?.pistas.includes(court) || !date || !(facility.horario || defaultTimes).includes(time) || `${date}T${time}` <= ceutaDateTime()) {
         updateCourtAvailability();
         statusMessage.textContent = "Elige una pista y un turno futuro.";
         return;

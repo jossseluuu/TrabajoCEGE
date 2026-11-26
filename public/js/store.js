@@ -65,6 +65,7 @@ const Store = (() => {
         const duracionMin = Number(datos.duracionMin);
 
         if (!instalacion) throw new Error("Elige una instalación.");
+        if (instalacion.subastable === false) throw new Error("Esta actividad no admite subastas.");
         if (!datos.fecha || !datos.hora) throw new Error("Indica la fecha y la hora del partido.");
         if (!(precioSalida >= 1)) throw new Error("El precio de salida debe ser de al menos 1 €.");
         if (!(incremento >= 1)) throw new Error("El incremento mínimo debe ser de al menos 1 €.");

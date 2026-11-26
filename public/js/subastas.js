@@ -350,7 +350,7 @@ const Subastas = (() => {
         const selDuracion = $("crear-duracion");
         const inputFecha = $("crear-fecha");
 
-        selInstalacion.innerHTML = INSTALACIONES.map((i) =>
+        selInstalacion.innerHTML = INSTALACIONES.filter((i) => i.subastable !== false).map((i) =>
             `<option value="${i.id}">${esc(i.nombre)} (${esc(i.deporte)})</option>`).join("");
         selHora.innerHTML = HORAS.map((h) => `<option value="${h}">${h}</option>`).join("");
         selDuracion.innerHTML = DURACIONES.map((d) =>
