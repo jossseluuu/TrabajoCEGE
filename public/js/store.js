@@ -172,6 +172,91 @@ const Store = (() => {
         return { instalacionId, puntuacion, comentario: texto };
     }
 
+    function validarReventa(datos) {
+        const precioSalida = Number(datos.precioSalida);
+        const incremento = Number(datos.incremento);
+        const duracionMin = Number(datos.duracionMin);
+        if (!datos.reservaId) throw new Error("Elige la reserva que quieres subastar.");
+        if (!(precioSalida >= 1)) throw new Error("El precio de salida debe ser de al menos 1 €.");
+        if (!(incremento >= 1)) throw new Error("El incremento mínimo debe ser de al menos 1 €.");
+        if (!(duracionMin >= 1)) throw new Error("Elige la duración de la subasta.");
+        return {
+            reservaId: datos.reservaId,
+            precioSalida: Math.round(precioSalida),
+            incremento: Math.round(incremento),
+            duracionMin: Math.round(duracionMin),
+            descripcion: String(datos.descripcion || "").trim().slice(0, 200),
+        };
+    }
+
+    const redondear = (n) => Math.round(n * 100) / 100;
+
+    // Lo que recibe quien revende su reserva: precio − comisión − IPSI de la comisión
+    function reparto(precio, comisionPct, ipsiPct) {
+        const comision = redondear(precio * comisionPct / 100);
+        const ipsi = redondear(comision * ipsiPct / 100);
+        return { comision, ipsi, neto: redondear(precio - comision - ipsi) };
+    }
+
+    // ---------- hora de Ceuta (Europe/Madrid) ----------
+
+    const formatoMadrid = new Intl.DateTimeFormat("sv-SE", {
+        timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit",
+        hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+    });
+    const textoMadrid = (ms) => formatoMadrid.format(new Date(ms)); // "AAAA-MM-DD HH:MM"
+
+    // Milisegundos de una fecha y hora de Ceuta (sea cual sea la zona del dispositivo)
+    function msMadrid(fecha, hora) {
+        const supuesto = Date.parse(`${fecha}T${hora}:00Z`);
+        const visto = Date.parse(`${textoMadrid(supuesto).replace(" ", "T")}:00Z`);
+        return supuesto - (visto - supuesto);
+    }
+
+    // ---------- subastas automáticas de última hora ----------
+    // Una pista libre de una instalación con reserva directa sale sola a
+    // subasta cuando faltan SUBASTA_AUTOMATICA.horasAntes horas. Mientras nadie
+    // puja, la subasta no existe en la base de datos: se calcula aquí igual en
+    // todos los dispositivos. Con la primera puja se crea de verdad.
+
+    const tieneSubastaAutomatica = (i) => Boolean(i.pistas && i.pistas.length) && i.subastable !== false &&
+        (i.subastaAutomatica ?? SUBASTA_AUTOMATICA.deportes.includes(i.deporte));
+
+    const precioSalidaAutomatica = (i) =>
+        Math.max(1, Math.ceil((i.precioPrueba || 0) * SUBASTA_AUTOMATICA.descuentoSalida));
+
+    const claveTurno = (instalacionId, pista, fecha, hora) => `${instalacionId}|${pista}|${fecha}|${hora}`;
+
+    function calcularHuecos(ahora, ocupados, subastas) {
+        const ventana = SUBASTA_AUTOMATICA.horasAntes * 60 * MINUTO;
+        const cierre = SUBASTA_AUTOMATICA.cierreMinAntes * MINUTO;
+        const ocupado = new Set(ocupados.map((r) => claveTurno(r.facility, r.court, r.date, r.time)));
+        for (const sub of subastas) {
+            if (sub.tipo === "automatica" && !sub.cancelada) ocupado.add(claveTurno(sub.instalacionId, sub.pista, sub.fecha, sub.hora));
+        }
+        const dias = [textoMadrid(ahora).slice(0, 10), textoMadrid(ahora + 24 * 60 * MINUTO).slice(0, 10)];
+        const huecos = [];
+        for (const inst of INSTALACIONES.filter(tieneSubastaAutomatica)) {
+            for (const fecha of dias) {
+                for (const hora of inst.horario || HORARIO_DEFECTO) {
+                    const inicio = msMadrid(fecha, hora);
+                    const fin = inicio - cierre;
+                    if (ahora < inicio - ventana || ahora >= fin) continue;
+                    const libres = inst.pistas.filter((p) => !ocupado.has(claveTurno(inst.id, p, fecha, hora)));
+                    if (!libres.length) continue;
+                    huecos.push({
+                        id: `auto|${inst.id}|${fecha}|${hora}`, virtual: true, tipo: "automatica",
+                        instalacionId: inst.id, titulo: inst.nombre, deporte: inst.deporte, fecha, hora,
+                        pista: null, pistasLibres: libres, descripcion: "",
+                        precioSalida: precioSalidaAutomatica(inst), incremento: 1,
+                        fin, creada: inicio - ventana, vendedorId: null, cancelada: false, cerrada: false, pujas: [],
+                    });
+                }
+            }
+        }
+        return huecos;
+    }
+
     // Añade a una subasta los campos calculados (estado, puja actual, ganador…)
     function enriquecer(subasta, ahora, getUsuario) {
         const pujas = subasta.pujas.map((p) => ({ ...p, id: String(p.id ?? `${p.fecha}-${p.usuarioId}`) })).sort((a, b) => b.cantidad - a.cantidad || a.fecha - b.fecha);
@@ -181,11 +266,19 @@ const Store = (() => {
         if (subasta.cancelada) estado = "cancelada";
         else if (ahora >= subasta.fin) estado = "finalizada";
 
+        const precioActual = mejor ? mejor.cantidad : subasta.precioSalida;
+        const comisionPct = subasta.comisionPct ?? FACTURACION_DEFECTO.comisionSubastas;
+        const ipsiPct = subasta.ipsiPct ?? FACTURACION_DEFECTO.ipsi;
+
         return {
             ...subasta,
+            tipo: subasta.tipo || "libre",
             pujas,
             estado,
-            precioActual: mejor ? mejor.cantidad : subasta.precioSalida,
+            comisionPct,
+            ipsiPct,
+            reparto: reparto(precioActual, comisionPct, ipsiPct),
+            precioActual,
             pujaMinima: mejor ? mejor.cantidad + subasta.incremento : subasta.precioSalida,
             mejorPuja: mejor,
             ganador: estado === "finalizada" && mejor
@@ -239,6 +332,9 @@ const Store = (() => {
         let desfase = 0; // diferencia entre el reloj del servidor y el del dispositivo
         let sesion = null;
         let nombresEnAgenda = false;
+        let tarifas = { comisionSubastas: FACTURACION_DEFECTO.comisionSubastas, ipsi: FACTURACION_DEFECTO.ipsi };
+        // turnos ocupados (sin datos personales) para quien no ha iniciado sesión
+        let ocupadosPublicos = [];
         const datos = { perfiles: new Map(), subastas: [], pujas: [], reservas: [] };
 
         const ahora = () => Date.now() + desfase;
@@ -283,6 +379,13 @@ const Store = (() => {
                     vendedorId: s.vendedor_id,
                     cancelada: s.cancelada,
                     creada: Date.parse(s.creada),
+                    // columnas de supabase/subastas.sql (si no se ha ejecutado, valores por defecto)
+                    tipo: s.tipo || "libre",
+                    pista: s.pista || null,
+                    reservaId: s.reserva_id || null,
+                    comisionPct: s.comision_pct != null ? Number(s.comision_pct) : null,
+                    ipsiPct: s.ipsi_pct != null ? Number(s.ipsi_pct) : null,
+                    cerrada: s.cerrada === true,
                 }));
             },
             async pujas() {
@@ -298,6 +401,10 @@ const Store = (() => {
             async reservas() {
                 if (!sesion) {
                     datos.reservas = [];
+                    const r = await client.rpc("turnos_ocupados");
+                    ocupadosPublicos = r.error ? [] : r.data.map((t) => ({
+                        facility: t.instalacion_id, court: t.pista, date: t.fecha, time: t.hora,
+                    }));
                     return;
                 }
                 const campos = "id, usuario_id, instalacion_id, pista, fecha, hora, creada";
@@ -393,6 +500,8 @@ const Store = (() => {
                 leerSesion().catch(() => (sesion = null)),
             ]);
             if (hora && hora.data) desfase = Date.parse(hora.data) - Date.now();
+            const t = await client.rpc("tarifas_subastas");
+            if (!t.error && t.data) tarifas = { ...tarifas, ...t.data };
 
             await recargar();
 
@@ -516,6 +625,47 @@ const Store = (() => {
             exigirSesion();
             comprobar(await client.rpc("cancelar_subasta", { p_subasta: subastaId }));
             await recargar("subastas");
+        }
+
+        const faltaSubastasSql = () =>
+            new Error("Falta actualizar el servidor: ejecuta supabase/subastas.sql en el SQL Editor de Supabase.");
+
+        async function crearSubastaReventa(datosReventa) {
+            exigirActivo();
+            const v = validarReventa(datosReventa);
+            const resultado = await client.rpc("crear_subasta_reventa", {
+                p_reserva: v.reservaId, p_precio_salida: v.precioSalida, p_incremento: v.incremento,
+                p_duracion_min: v.duracionMin, p_descripcion: v.descripcion,
+            });
+            if (noExiste(resultado.error)) throw faltaSubastasSql();
+            const id = comprobar(resultado);
+            await recargar("subastas");
+            return getSubasta(id);
+        }
+
+        async function pujarHueco(instalacionId, fecha, hora, cantidad) {
+            exigirActivo();
+            cantidad = Number(cantidad);
+            if (!Number.isInteger(cantidad)) throw new Error("La puja tiene que ser un número entero de euros.");
+            const resultado = await client.rpc("pujar_hueco", {
+                p_instalacion: instalacionId, p_fecha: fecha, p_hora: hora, p_cantidad: cantidad,
+            });
+            if (noExiste(resultado.error)) throw faltaSubastasSql();
+            const id = comprobar(resultado);
+            await recargar("subastas", "pujas", "reservas");
+            return id;
+        }
+
+        let sinCierre = false; // si el servidor no tiene cerrar_subastas, no se insiste
+        async function cerrarSubastas() {
+            if (sinCierre) return 0;
+            const resultado = await client.rpc("cerrar_subastas");
+            if (resultado.error) {
+                if (noExiste(resultado.error)) sinCierre = true;
+                return 0;
+            }
+            if (resultado.data > 0) await recargar("subastas", "reservas");
+            return resultado.data;
         }
 
         // ---------- reservas ----------
@@ -687,6 +837,9 @@ const Store = (() => {
             misReservas, pistaOcupada, reservar, cancelarReserva,
             reservasParaAgenda: () => sesion ? datos.reservas : [],
             todasLasReservas: () => datos.reservas,
+            turnosOcupados: () => (sesion ? datos.reservas : ocupadosPublicos),
+            crearSubastaReventa, pujarHueco, cerrarSubastas,
+            tarifasSubastas: () => tarifas,
             permiteMostrarNombre: () => nombresEnAgenda,
             listarOpiniones, guardarOpinion,
             motivoNombre: (nombre) => motivoNombre(nombre, listaProhibidos),
@@ -891,6 +1044,111 @@ const Store = (() => {
             avisar("datos-cambiados");
         }
 
+        const subastaAbierta = (s) => !s.cancelada && !s.cerrada;
+
+        function tarifasSubastas(instalacionId) {
+            const ajustes = { ...FACTURACION_DEFECTO, ...leer(KEYS.ajustes, {}) };
+            const bonificada = instalacionId != null ? ajustes.bonificadas?.[instalacionId] : undefined;
+            return { comisionSubastas: Number(bonificada ?? ajustes.comisionSubastas), ipsi: Number(ajustes.ipsi) };
+        }
+
+        async function crearSubastaReventa(datosReventa) {
+            const usuario = exigirActivo();
+            const v = validarReventa(datosReventa);
+            const reserva = todasLasReservas().find((r) => r.id === v.reservaId);
+            if (!reserva || reserva.userId !== usuario.id) throw new Error("Solo puedes subastar tus propias reservas.");
+            const instalacion = INSTALACIONES.find((i) => i.id === reserva.facility);
+            if (instalacion && instalacion.subastable === false) {
+                throw new Error("Las reservas de esta instalación no se pueden subastar.");
+            }
+            const fin = Date.now() + v.duracionMin * MINUTO;
+            if (msMadrid(reserva.date, reserva.time) <= fin) {
+                throw new Error("La subasta tiene que terminar antes de que empiece el partido.");
+            }
+            const subastas = getSubastasRaw();
+            if (subastas.some((s) => s.reservaId === reserva.id && subastaAbierta(s))) {
+                throw new Error("Esta reserva ya está en subasta.");
+            }
+            const tarifas = tarifasSubastas(reserva.facility);
+            const subasta = {
+                id: nuevoId(), tipo: "reventa", reservaId: reserva.id, pista: reserva.court,
+                instalacionId: reserva.facility,
+                titulo: instalacion ? instalacion.nombre : `Instalación ${reserva.facility}`,
+                deporte: instalacion ? instalacion.deporte : "Deporte",
+                fecha: reserva.date, hora: reserva.time, descripcion: v.descripcion,
+                precioSalida: v.precioSalida, incremento: v.incremento, fin,
+                vendedorId: usuario.id, pujas: [], cancelada: false, cerrada: false, creada: Date.now(),
+                comisionPct: tarifas.comisionSubastas, ipsiPct: tarifas.ipsi,
+            };
+            subastas.push(subasta);
+            guardar(KEYS.subastas, subastas);
+            avisar("datos-cambiados");
+            return getSubasta(subasta.id);
+        }
+
+        async function pujarHueco(instalacionId, fecha, hora, cantidad) {
+            exigirActivo();
+            const ahoraMs = ahora();
+            const hueco = calcularHuecos(ahoraMs, todasLasReservas(), getSubastasRaw())
+                .find((h) => h.instalacionId === instalacionId && h.fecha === fecha && h.hora === hora);
+            if (!hueco) throw new Error("Ya no quedan pistas libres en ese turno.");
+            const tarifas = tarifasSubastas(instalacionId);
+            const subasta = {
+                id: nuevoId(), tipo: "automatica", reservaId: null, pista: hueco.pistasLibres[0],
+                instalacionId, titulo: hueco.titulo, deporte: hueco.deporte, fecha, hora,
+                descripcion: "Subasta automática de última hora: pista libre a mitad de precio.",
+                precioSalida: hueco.precioSalida, incremento: 1, fin: hueco.fin,
+                vendedorId: null, pujas: [], cancelada: false, cerrada: false, creada: ahoraMs,
+                comisionPct: tarifas.comisionSubastas, ipsiPct: tarifas.ipsi,
+            };
+            const subastas = getSubastasRaw();
+            subastas.push(subasta);
+            guardar(KEYS.subastas, subastas);
+            try {
+                await pujar(subasta.id, cantidad);
+            } catch (error) {
+                // la puja no es válida: la subasta no llega a crearse
+                guardar(KEYS.subastas, getSubastasRaw().filter((s) => s.id !== subasta.id));
+                avisar("datos-cambiados");
+                throw error;
+            }
+            return subasta.id;
+        }
+
+        // Adjudica las subastas terminadas: crea la reserva (automáticas) o
+        // se la pasa al ganador (reventa)
+        async function cerrarSubastas() {
+            const subastas = getSubastasRaw();
+            const reservas = todasLasReservas();
+            let n = 0;
+            for (const raw of subastas) {
+                if (!subastaAbierta(raw) || ahora() < raw.fin) continue;
+                const mejor = enriquecer(raw, ahora(), getUsuario).mejorPuja;
+                raw.cerrada = true;
+                n++;
+                if (!mejor) continue;
+                if (raw.tipo === "automatica") {
+                    const ocupada = reservas.some((r) => r.facility === raw.instalacionId && r.court === raw.pista &&
+                        r.date === raw.fecha && r.time === raw.hora);
+                    if (!ocupada) {
+                        reservas.push({
+                            id: nuevoId(), userId: mejor.usuarioId, facility: raw.instalacionId, court: raw.pista,
+                            date: raw.fecha, time: raw.hora, mostrarNombre: false, creada: ahora(),
+                        });
+                    }
+                } else if (raw.tipo === "reventa") {
+                    const reserva = reservas.find((r) => r.id === raw.reservaId && r.userId === raw.vendedorId);
+                    if (reserva) Object.assign(reserva, { userId: mejor.usuarioId, mostrarNombre: false });
+                }
+            }
+            if (n) {
+                guardar(KEYS.subastas, subastas);
+                guardar(KEYS.reservas, reservas);
+                avisar("datos-cambiados");
+            }
+            return n;
+        }
+
         // ---------- reservas ----------
 
         const todasLasReservas = () => leer(KEYS.reservas, []);
@@ -908,14 +1166,25 @@ const Store = (() => {
             if (pistaOcupada(facility, court, date, time)) {
                 throw new Error("Esa pista ya está reservada por otro usuario en ese turno.");
             }
+            if (getSubastasRaw().some((s) => s.tipo === "automatica" && subastaAbierta(s) &&
+                s.instalacionId === facility && s.pista === court && s.fecha === date && s.hora === time)) {
+                throw new Error("Esa pista está en subasta de última hora: puja por ella en la sección de subastas.");
+            }
             const reservas = todasLasReservas();
             reservas.push({ id: nuevoId(), userId: usuario.id, facility, court, date, time, mostrarNombre, creada: Date.now() });
             guardar(KEYS.reservas, reservas);
             avisar("datos-cambiados");
         }
 
+        function comprobarReservaSinSubasta(id) {
+            if (getSubastasRaw().some((s) => s.reservaId === id && subastaAbierta(s))) {
+                throw new Error("Esta reserva está en subasta. Cancela antes la subasta (solo si aún no tiene pujas).");
+            }
+        }
+
         async function cancelarReserva(id) {
             const usuario = exigirSesion();
+            comprobarReservaSinSubasta(id);
             guardar(KEYS.reservas, todasLasReservas().filter((r) => !(r.id === id && r.userId === usuario.id)));
             avisar("datos-cambiados");
         }
@@ -958,6 +1227,7 @@ const Store = (() => {
             const idPorEmail = (email) => usuarios.find((u) => u.email === normalizarEmail(email)).id;
             const t = Date.now();
 
+            const reservasSubastadas = [];
             const subastas = SUBASTAS_DEMO.map((demo) => {
                 const instalacion = INSTALACIONES.find((i) => i.id === demo.instalacionId);
                 // Hora del partido redondeada y dentro del horario de las pistas (9:00–22:00)
@@ -969,8 +1239,20 @@ const Store = (() => {
                     partido.setDate(partido.getDate() + 1);
                     partido.setHours(9);
                 }
+                const reserva = {
+                    id: nuevoId(), userId: idPorEmail(demo.vendedor), facility: instalacion.id,
+                    court: instalacion.pistas[0], date: fechaISO(partido), time: partido.toTimeString().slice(0, 5),
+                    mostrarNombre: false, creada: t - 24 * 60 * MINUTO,
+                };
+                reservasSubastadas.push(reserva);
                 return {
                     id: nuevoId(),
+                    tipo: "reventa",
+                    reservaId: reserva.id,
+                    pista: reserva.court,
+                    comisionPct: FACTURACION_DEFECTO.comisionSubastas,
+                    ipsiPct: FACTURACION_DEFECTO.ipsi,
+                    cerrada: false,
                     instalacionId: instalacion.id,
                     titulo: instalacion.nombre,
                     deporte: instalacion.deporte,
@@ -993,14 +1275,14 @@ const Store = (() => {
             });
             guardar(KEYS.subastas, subastas);
 
-            guardar(KEYS.reservas, RESERVAS_DEMO.map((demo) => {
+            guardar(KEYS.reservas, [...reservasSubastadas, ...RESERVAS_DEMO.map((demo) => {
                 const dia = new Date(t + demo.diasDesdeHoy * 24 * 60 * MINUTO);
                 return {
                     id: nuevoId(), userId: idPorEmail(demo.email), facility: demo.instalacionId,
                     court: demo.pista, date: fechaISO(dia), time: demo.hora, mostrarNombre: false,
                     creada: dia.getTime() - 2 * 24 * 60 * MINUTO,
                 };
-            }));
+            })]);
         }
 
         // Navegadores con datos de antes de existir la cuenta de administrador de prueba
@@ -1071,6 +1353,7 @@ const Store = (() => {
 
         async function adminBorrarReserva(id) {
             exigirAdmin();
+            comprobarReservaSinSubasta(id);
             guardar(KEYS.reservas, todasLasReservas().filter((r) => r.id !== id));
             avisar("datos-cambiados");
         }
@@ -1166,6 +1449,9 @@ const Store = (() => {
             misReservas, pistaOcupada, reservar, cancelarReserva,
             reservasParaAgenda: () => usuarioActual() ? todasLasReservas() : [],
             todasLasReservas,
+            turnosOcupados: todasLasReservas,
+            crearSubastaReventa, pujarHueco, cerrarSubastas,
+            tarifasSubastas: () => tarifasSubastas(),
             permiteMostrarNombre: () => true,
             listarOpiniones, guardarOpinion,
             motivoNombre: (nombre) => motivoNombre(nombre, getProhibidos()),
@@ -1183,9 +1469,67 @@ const Store = (() => {
 
     const backend = modo === "remoto" ? crearBackendRemoto() : crearBackendLocal();
 
+    // ---------- capa común de subastas (igual en los dos modos) ----------
+
+    // Turnos libres que ahora mismo están en subasta automática (sin pujas aún)
+    function listarHuecosAutomaticos() {
+        const t = backend.ahora();
+        return calcularHuecos(t, backend.turnosOcupados(), backend.listarSubastas())
+            .map((h) => enriquecer(h, t, backend.getUsuario));
+    }
+
+    const esHueco = (id) => String(id).startsWith("auto|");
+
+    function getSubasta(id) {
+        return esHueco(id) ? listarHuecosAutomaticos().find((h) => h.id === id) || null : backend.getSubasta(id);
+    }
+
+    // Pujar en un turno libre crea la subasta automática; devuelve la subasta real
+    async function pujar(id, cantidad) {
+        if (!esHueco(id)) return backend.pujar(id, cantidad);
+        const [, instalacionId, fecha, hora] = String(id).split("|");
+        const nuevoId = await backend.pujarHueco(Number(instalacionId), fecha, hora, cantidad);
+        return backend.getSubasta(nuevoId);
+    }
+
+    // Pistas en subasta automática abierta: en la agenda aparecen ocupadas
+    function turnosEnSubasta() {
+        return backend.listarSubastas()
+            .filter((s) => s.tipo === "automatica" && !s.cancelada && !s.cerrada)
+            .map((s) => ({
+                id: `subasta-${s.id}`, subastaId: s.id, userId: null, enSubasta: true,
+                facility: Number(s.instalacionId), court: s.pista, date: s.fecha, time: s.hora,
+            }));
+    }
+
+    function reservasParaAgenda() {
+        const reservas = backend.reservasParaAgenda();
+        return backend.usuarioActual() ? [...reservas, ...turnosEnSubasta()] : reservas;
+    }
+
+    const pistaOcupada = (facility, court, date, time) => backend.pistaOcupada(facility, court, date, time) ||
+        turnosEnSubasta().some((r) => r.facility === facility && r.court === court && r.date === date && r.time === time);
+
+    // Adjudicar las subastas terminadas (una llamada a la vez)
+    let cerrando = null;
+    function cerrarSubastas() {
+        cerrando = cerrando || backend.cerrarSubastas().catch(() => 0).finally(() => (cerrando = null));
+        return cerrando;
+    }
+    const hayPorCerrar = () => backend.listarSubastas().some((s) => s.estado === "finalizada" && !s.cerrada);
+
     // inicializar() se puede llamar varias veces: solo se ejecuta una
     let arranque = null;
-    const inicializar = () => (arranque = arranque || backend.inicializar());
+    const inicializar = () => (arranque = arranque || backend.inicializar().then(async () => {
+        if (hayPorCerrar()) await cerrarSubastas();
+        setInterval(() => {
+            if (hayPorCerrar()) cerrarSubastas();
+        }, 20000);
+    }));
 
-    return { ...backend, modo, inicializar };
+    return {
+        ...backend, modo, inicializar,
+        listarHuecosAutomaticos, getSubasta, pujar, reservasParaAgenda, pistaOcupada, cerrarSubastas,
+        msMadrid,
+    };
 })();

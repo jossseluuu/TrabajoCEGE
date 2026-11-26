@@ -2527,9 +2527,14 @@ nav a:focus-visible {
     font-weight: 700;
 }
 
-.tag-subasta {
+.tag-reventa {
     background: #ede9fe;
     color: #6d28d9;
+}
+
+.tag-auto {
+    background: #fef3c7;
+    color: #92400e;
 }
 
 .tag-reserva {
@@ -2805,4 +2810,46 @@ nav a:focus-visible {
         max-height: none;
         box-shadow: none;
     }
+}
+
+
+/* ---------- Formatos de subasta: última hora y reventa ---------- */
+
+.auction-badge.badge-auto {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.auction-payout {
+    margin-top: 8px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: #f0fdf4;
+    color: #166534;
+    font-size: 14px;
+}
+
+.payout-box:empty {
+    display: none;
+}
+
+.payout-box {
+    padding: 12px 14px;
+    border: 1px solid #bbf7d0;
+    border-radius: 12px;
+    background: #f0fdf4;
+    color: #14532d;
+    font-size: 14px;
+}
+
+.payout-box dl {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px 12px;
+    margin: 8px 0;
+}
+
+.payout-box dd {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
 }

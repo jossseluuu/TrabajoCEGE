@@ -101,6 +101,7 @@
                         </div>
                         <fieldset class="admin-fieldset">
                             <legend>Comisión bonificada (RSC: escuelas base, deporte femenino…)</legend>
+                            <p class="admin-hint">Se aplica a reservas y subastas de esa instalación. Cada subasta guarda la comisión vigente al crearse.</p>
                             <ul class="admin-chips" id="fact-bonificadas"></ul>
                             <div class="admin-form-row">
                                 <label>Instalación<select id="fact-bonif-instalacion"></select></label>
@@ -118,10 +119,23 @@
                     <div class="admin-table-wrap">
                         <table class="admin-table">
                             <thead>
-                                <tr><th>Instalación</th><th class="num">Reservas</th><th class="num">Subastas</th><th class="num">Volumen</th><th class="num">% com.</th><th class="num">Comisión</th><th class="num">IPSI</th><th class="num">A liquidar</th><th></th></tr>
+                                <tr><th>Instalación</th><th class="num">Reservas</th><th class="num">Última hora</th><th class="num">Volumen</th><th class="num">% com.</th><th class="num">Comisión</th><th class="num">IPSI</th><th class="num">A liquidar</th><th></th></tr>
                             </thead>
                             <tbody id="fact-instalaciones"></tbody>
                             <tfoot id="fact-totales"></tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="reservation-panel">
+                    <h2 class="admin-h2">Pagos a usuarios por reventas</h2>
+                    <p class="admin-hint">Reservas que un usuario ha subastado: la reserva pasa al ganador y al vendedor se le paga el precio final menos la comisión y su IPSI.</p>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr><th>Partido</th><th>Pista</th><th>Vendedor</th><th>Comprador</th><th class="num">Precio final</th><th class="num">Comisión</th><th class="num">IPSI</th><th class="num">A pagar</th></tr>
+                            </thead>
+                            <tbody id="fact-reventas"></tbody>
                         </table>
                     </div>
                 </div>
@@ -152,7 +166,7 @@
                 <div class="reservation-panel admin-table-wrap">
                     <table class="admin-table">
                         <thead>
-                            <tr><th>Instalación</th><th>Partido</th><th>Vendedor</th><th>Estado</th><th class="num">Precio</th><th class="num">Pujas</th><th>Termina</th><th></th></tr>
+                            <tr><th>Instalación</th><th>Formato</th><th>Partido</th><th>Vendedor</th><th>Estado</th><th class="num">Precio</th><th class="num">Pujas</th><th>Termina</th><th></th></tr>
                         </thead>
                         <tbody id="admin-subastas"></tbody>
                     </table>

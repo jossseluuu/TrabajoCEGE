@@ -1,5 +1,10 @@
-// Subastas entre usuarios: listado, creación, pujas y cuenta atrás.
+// Subastas: listado, pujas, cuenta atrás y reventa de reservas.
 // Los datos se leen y guardan a través de `Store` (store.js).
+//
+// Dos formatos (ver SUBASTA_AUTOMATICA en data.js):
+//   ⚡ automatica → pistas libres a 12 h o menos, salen solas a mitad de precio
+//   🔁 reventa    → un usuario subasta su reserva y cobra el precio final menos
+//                   la comisión de CeutaPlay
 
 const Subastas = (() => {
 
@@ -11,9 +16,6 @@ const Subastas = (() => {
         { minutos: 1440, texto: "1 día" },
         { minutos: 4320, texto: "3 días" },
     ];
-
-    const HORAS = ["09:00", "10:00", "11:00", "12:00", "13:00", "16:00",
-        "17:00", "18:00", "19:00", "20:00", "21:00", "22:00"];
 
     let filtro = "activas";
     let deporteFiltro = "";
@@ -27,6 +29,33 @@ const Subastas = (() => {
 
     const $ = (id) => document.getElementById(id);
     const esc = (t) => UI.escapeHTML(t);
+    const euros = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
+
+    // ---------- formatos de subasta ----------
+
+    function lineaVendedor(s) {
+        if (s.tipo === "automatica") {
+            const pistas = s.pista ? esc(s.pista)
+                : `${s.pistasLibres.length} ${s.pistasLibres.length === 1 ? "pista libre" : "pistas libres"}`;
+            return `⚡ Subasta automática de la instalación · ${pistas}`;
+        }
+        return `Subastada por <strong>${esc(s.vendedor ? s.vendedor.nombre : "—")}</strong>${s.pista ? ` · ${esc(s.pista)}` : ""}`;
+    }
+
+    // Cuánto recibe quien revende su reserva (solo lo ve el vendedor)
+    function lineaReparto(s, usuario) {
+        if (!usuario || s.tipo === "automatica" || s.vendedorId !== usuario.id) return "";
+        const { neto } = s.reparto;
+        if (s.estado === "finalizada" && s.ganador) {
+            return `<p class="auction-payout">💰 Recibes <strong>${euros.format(neto)}</strong>
+                    (${s.precioActual} € − comisión ${s.comisionPct} % − IPSI)</p>`;
+        }
+        if (s.estado === "activa") {
+            return `<p class="auction-payout">💰 Si se vende a este precio recibirás <strong>${euros.format(neto)}</strong>
+                    · comisión CeutaPlay ${s.comisionPct} % + IPSI</p>`;
+        }
+        return "";
+    }
 
     // ---------- precio normal y ahorro ----------
 
@@ -46,11 +75,6 @@ const Subastas = (() => {
         return Math.round((1 - s.precioActual / normal) * 100);
     }
 
-    // Fecha y hora actuales en formato AAAA-MM-DDTHH:MM (para comparar con reservas)
-    function ceutaAhora() {
-        const d = new Date(Store.ahora());
-        return `${fechaISO(d)}T${d.toTimeString().slice(0, 5)}`;
-    }
 
     function progreso(inicio, fin) {
         if (!inicio || fin <= inicio) return 100;
@@ -139,7 +163,9 @@ const Subastas = (() => {
 
     function crearTarjeta(s, usuario) {
         const badge = {
-            activa: `<span class="auction-badge">🔥 EN CURSO</span>`,
+            activa: s.tipo === "automatica" ? `<span class="auction-badge badge-auto">⚡ ÚLTIMA HORA</span>`
+                : s.tipo === "reventa" ? `<span class="auction-badge">🔁 REVENTA</span>`
+                : `<span class="auction-badge">🔥 EN CURSO</span>`,
             finalizada: `<span class="auction-badge badge-ended">FINALIZADA</span>`,
             cancelada: `<span class="auction-badge badge-ended">CANCELADA</span>`,
         }[s.estado];
@@ -167,7 +193,7 @@ const Subastas = (() => {
                 </div>
                 <h3>${esc(s.titulo)}</h3>
                 <p class="auction-hour">${formatoPartido(s.fecha, s.hora)}</p>
-                <p class="auction-seller">Subastada por <strong>${esc(s.vendedor ? s.vendedor.nombre : "—")}</strong></p>
+                <p class="auction-seller">${lineaVendedor(s)}</p>
                 ${s.descripcion ? `<p class="auction-desc">“${esc(s.descripcion)}”</p>` : ""}
                 <div class="auction-price">
                     <div>
@@ -180,6 +206,7 @@ const Subastas = (() => {
                     </div>
                 </div>
                 ${lineaAhorro}
+                ${lineaReparto(s, usuario)}
                 ${barra}
                 <div class="auction-meta">
                     <span>👥 ${s.pujas.length} ${s.pujas.length === 1 ? "puja" : "pujas"}</span>
@@ -206,10 +233,13 @@ const Subastas = (() => {
         let resultado;
         switch (filtro) {
             case "activas":
-                resultado = lista.filter((s) => s.estado === "activa");
+                resultado = lista.filter((s) => s.estado === "activa" && !s.virtual);
+                break;
+            case "ultima-hora":
+                resultado = lista.filter((s) => s.estado === "activa" && s.tipo === "automatica");
                 break;
             case "finalizadas":
-                resultado = lista.filter((s) => s.estado !== "activa");
+                resultado = lista.filter((s) => s.estado !== "activa" && !s.virtual);
                 break;
             case "mias":
                 resultado = lista.filter((s) => usuario && s.vendedorId === usuario.id);
@@ -235,8 +265,11 @@ const Subastas = (() => {
             ? Math.round(vendidas.reduce((n, s) => n + ahorro(s), 0) / vendidas.length)
             : null;
 
+        const ultimaHora = Store.listarHuecosAutomaticos().length +
+            activas.filter((s) => s.tipo === "automatica").length;
         $("subastas-stats").innerHTML = `
             <div><dt>En curso</dt><dd>${activas.length}</dd></div>
+            <div><dt>⚡ Pistas a mitad de precio</dt><dd>${ultimaHora}</dd></div>
             <div><dt>Terminan en menos de 1 h</dt><dd class="${pronto ? "is-urgent" : ""}">${pronto}</dd></div>
             <div><dt>Pujas realizadas</dt><dd>${pujas}</dd></div>
             <div><dt>Ahorro medio de las vendidas</dt><dd>${ahorroMedio === null ? "—" : `${ahorroMedio}%`}</dd></div>`;
@@ -257,10 +290,10 @@ const Subastas = (() => {
                 if (antes.ganando && ahora.estado === "activa" && !ahora.ganando) {
                     UI.toast(`⚠️ Te han superado en ${s.titulo}: ahora va por ${s.precioActual} €.`, "error");
                 } else if (antes.ganando && ahora.estado === "finalizada" && ahora.ganando) {
-                    UI.toast(`🏆 ¡Has ganado la subasta de ${s.titulo} por ${s.precioActual} €!`);
+                    UI.toast(`🏆 ¡Has ganado la subasta de ${s.titulo} por ${s.precioActual} €! La reserva ya es tuya.`);
                 } else if (s.vendedorId === usuario.id && ahora.estado === "finalizada") {
                     UI.toast(s.ganador
-                        ? `💰 Tu subasta de ${s.titulo} se ha cerrado: la gana ${s.ganador.nombre} por ${s.precioActual} €.`
+                        ? `💰 Tu subasta de ${s.titulo} se ha cerrado: la gana ${s.ganador.nombre} por ${s.precioActual} €. Recibes ${euros.format(s.reparto.neto)}.`
                         : `Tu subasta de ${s.titulo} ha terminado sin pujas.`);
                 }
             }
@@ -275,7 +308,8 @@ const Subastas = (() => {
         }
         if (deporteFiltro) return `No hay subastas de ${esc(deporteFiltro.toLowerCase())} en esta lista.`;
         return {
-            activas: "No hay subastas activas ahora mismo. ¡Crea la primera!",
+            activas: "No hay subastas de usuarios en curso. Mira las de ⚡ Última hora o subasta tu reserva.",
+            "ultima-hora": "Ahora mismo no hay pistas libres en las próximas 12 horas.",
             finalizadas: "Todavía no ha terminado ninguna subasta.",
             mias: "Aún no has creado ninguna subasta.",
             pujas: "Aún no has pujado en ninguna subasta.",
@@ -285,7 +319,8 @@ const Subastas = (() => {
     function pintar() {
         const usuario = Store.usuarioActual();
         const todas = Store.listarSubastas();
-        const lista = filtrar(todas, usuario);
+        const huecos = Store.listarHuecosAutomaticos();
+        const lista = filtrar(filtro === "ultima-hora" ? [...todas, ...huecos] : todas, usuario);
 
         avisarCambios(todas, usuario);
         pintarResumen(todas);
@@ -297,6 +332,8 @@ const Subastas = (() => {
         vacio.hidden = lista.length > 0;
 
         $("contador-activas").textContent = todas.filter((s) => s.estado === "activa").length;
+        $("contador-ultima").textContent = huecos.length +
+            todas.filter((s) => s.estado === "activa" && s.tipo === "automatica").length;
 
         activasPintadas = new Set(todas.filter((s) => s.estado === "activa").map((s) => s.id));
 
@@ -324,8 +361,14 @@ const Subastas = (() => {
             algunaTerminada = Store.listarSubastas()
                 .some((s) => s.estado !== "activa" && activasPintadas.has(s.id));
         }
-        if (algunaTerminada) pintar();
+        if (algunaTerminada) {
+            Store.cerrarSubastas(); // adjudica (crea o traspasa la reserva)
+            pintar();
+        }
+        // los turnos de última hora aparecen y desaparecen con la hora
+        if (++segundos % 60 === 0) pintar();
     }
+    let segundos = 0;
 
     // ---------- modal de puja ----------
 
@@ -368,7 +411,11 @@ const Subastas = (() => {
         $("bid-body").innerHTML = `
             <span class="section-label">${iconoDeporte(s.deporte)} ${esc(s.deporte.toUpperCase())}</span>
             <h2>${esc(s.titulo)}</h2>
-            <p class="auction-hour">${formatoPartido(s.fecha, s.hora)} · Subastada por ${esc(s.vendedor ? s.vendedor.nombre : "—")}</p>
+            <p class="auction-hour">${formatoPartido(s.fecha, s.hora)}</p>
+            <p class="auction-seller">${lineaVendedor(s)}</p>
+            ${s.tipo === "automatica" ? `<p class="form-hint">Pista libre de última hora a mitad de precio. Si ganas, la reserva se crea a tu nombre al cerrar la subasta (${SUBASTA_AUTOMATICA.cierreMinAntes} min antes del partido).</p>`
+                : s.tipo === "reventa" ? `<p class="form-hint">Reventa de una reserva. Si ganas, la reserva pasa a tu nombre al cerrar la subasta.</p>` : ""}
+            ${lineaReparto(s, usuario)}
 
             <div class="bid-summary">
                 <div>
@@ -438,7 +485,8 @@ const Subastas = (() => {
             const cantidad = Number($("bid-cantidad").value);
             form.querySelector("[type=submit]").disabled = true;
             try {
-                await Store.pujar(s.id, cantidad);
+                const actualizada = await Store.pujar(s.id, cantidad);
+                if (actualizada) subastaAbierta = actualizada.id; // en un turno libre se crea la subasta
                 UI.toast(`✅ Has pujado ${cantidad} € por ${s.titulo}.`);
                 pintar();
             } catch (error) {
@@ -466,119 +514,95 @@ const Subastas = (() => {
         }, "Inicia sesión para pujar en esta subasta.");
     }
 
-    // ---------- modal de crear subasta ----------
+    // ---------- modal de reventa (subastar mi reserva) ----------
 
     function prepararFormularioCrear() {
         const form = $("create-form");
-        const selInstalacion = $("crear-instalacion");
-        const selHora = $("crear-hora");
-        const selDuracion = $("crear-duracion");
-        const inputFecha = $("crear-fecha");
-
         const selReserva = $("crear-desde-reserva");
+        const selDuracion = $("crear-duracion");
+        const inputPrecio = $("crear-precio");
+        let reservas = [];
 
-        selInstalacion.innerHTML = INSTALACIONES.filter((i) => i.subastable !== false).map((i) =>
-            `<option value="${i.id}">${esc(i.nombre)} (${esc(i.deporte)})</option>`).join("");
         selDuracion.innerHTML = DURACIONES.map((d) =>
-            `<option value="${d.minutos}" ${d.minutos === 60 ? "selected" : ""}>${d.texto}</option>`).join("");
+            `<option value="${d.minutos}">${d.texto}</option>`).join("");
 
-        const inicioPartido = () => new Date(`${inputFecha.value}T${selHora.value}`).getTime();
+        const reservaElegida = () => reservas.find((r) => String(r.id) === selReserva.value) || null;
+        const instalacionReserva = (r) => INSTALACIONES.find((i) => i.id === r.facility) || null;
 
-        // Horas: no se pueden elegir las que ya han pasado (o empiezan en menos de 2 minutos)
-        function actualizarHoras(horaPreferida = selHora.value) {
-            const horas = [...HORAS];
-            if (horaPreferida && !horas.includes(horaPreferida)) horas.push(horaPreferida);
-            horas.sort();
-            const limite = Store.ahora() + 2 * 60000;
-            selHora.innerHTML = horas.map((h) => {
-                const pasada = new Date(`${inputFecha.value}T${h}`).getTime() <= limite;
-                return `<option value="${h}" ${pasada ? "disabled" : ""}>${h}${pasada ? " (ya ha pasado)" : ""}</option>`;
-            }).join("");
-            const opcion = [...selHora.options].find((o) => o.value === horaPreferida && !o.disabled)
-                || [...selHora.options].find((o) => !o.disabled);
-            if (opcion) selHora.value = opcion.value;
-            actualizarDuraciones();
+        // Reservas futuras propias que se pueden subastar y no están ya en subasta
+        function reservasSubastables() {
+            const usuario = Store.usuarioActual();
+            const enSubasta = new Set(Store.listarSubastas()
+                .filter((s) => s.reservaId && !s.cancelada && !s.cerrada).map((s) => s.reservaId));
+            return Store.misReservas()
+                .filter((r) => instalacionReserva(r)?.subastable !== false)
+                .filter((r) => Store.msMadrid(r.date, r.time) > Store.ahora() + 5 * 60000)
+                .filter((r) => usuario && !enSubasta.has(r.id))
+                .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
         }
 
-        // Duraciones: la subasta tiene que terminar antes de que empiece el partido
+        // La subasta tiene que terminar antes de que empiece el partido
         function actualizarDuraciones() {
-            const margen = inicioPartido() - Store.ahora();
-            let elegida = Number(selDuracion.value);
-            [...selDuracion.options].forEach((o) => {
-                o.disabled = Number(o.value) * 60000 >= margen;
-            });
-            if (selDuracion.selectedOptions[0] && selDuracion.selectedOptions[0].disabled) {
+            const r = reservaElegida();
+            const margen = r ? Store.msMadrid(r.date, r.time) - Store.ahora() : Infinity;
+            [...selDuracion.options].forEach((o) => (o.disabled = Number(o.value) * 60000 >= margen));
+            if (!selDuracion.selectedOptions[0] || selDuracion.selectedOptions[0].disabled) {
                 const validas = [...selDuracion.options].filter((o) => !o.disabled);
-                const mejor = validas.filter((o) => Number(o.value) <= elegida).pop() || validas[0];
-                if (mejor) selDuracion.value = mejor.value;
+                const preferida = validas.filter((o) => Number(o.value) <= 60).pop() || validas[0];
+                if (preferida) selDuracion.value = preferida.value;
             }
         }
 
-        // Precio de salida orientativo: la mitad del precio normal de la pista
-        function sugerirPrecio() {
-            const instalacion = INSTALACIONES.find((i) => i.id === Number(selInstalacion.value));
-            const normal = instalacion && instalacion.precioPrueba;
-            $("crear-precio").value = normal ? Math.max(1, Math.round(normal / 2)) : 10;
+        function actualizarReparto() {
+            const r = reservaElegida();
+            const precio = Math.max(1, Math.round(Number(inputPrecio.value) || 0));
+            const { comisionSubastas, ipsi } = Store.tarifasSubastas();
+            const comision = Math.round(precio * comisionSubastas) / 100;
+            const ipsiEuros = Math.round(comision * ipsi) / 100;
+            $("crear-reparto").innerHTML = r ? `
+                <p><strong>Si se vende al precio de salida (${precio} €):</strong></p>
+                <dl>
+                    <dt>Comisión CeutaPlay (${comisionSubastas} %)</dt><dd>− ${euros.format(comision)}</dd>
+                    <dt>IPSI de la comisión (${ipsi} %)</dt><dd>− ${euros.format(ipsiEuros)}</dd>
+                    <dt><strong>Recibes</strong></dt><dd><strong>${euros.format(precio - comision - ipsiEuros)}</strong></dd>
+                </dl>
+                <p class="form-hint">Si nadie puja, la reserva sigue siendo tuya.</p>` : "";
+        }
+
+        function elegirReserva() {
+            const r = reservaElegida();
+            const normal = r && instalacionReserva(r)?.precioPrueba;
+            inputPrecio.value = normal ? Math.max(1, Math.round(normal / 2)) : 10;
             $("crear-precio-ayuda").textContent = normal
-                ? `Precio normal de esta pista: ${normal} €/h. Te proponemos salir a la mitad para atraer pujas.`
-                : "";
-        }
-
-        // "A partir de una de mis reservas": rellena instalación, fecha y hora
-        function prepararReservas() {
-            const ahora = ceutaAhora();
-            const yaSubastadas = new Set(Store.listarSubastas()
-                .filter((s) => s.estado === "activa" && s.vendedorId === (Store.usuarioActual() || {}).id)
-                .map((s) => `${s.instalacionId}|${s.fecha}|${s.hora}`));
-            const reservas = Store.misReservas()
-                .filter((r) => `${r.date}T${r.time}` > ahora)
-                .filter((r) => !yaSubastadas.has(`${r.facility}|${r.date}|${r.time}`))
-                .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
-
-            selReserva.innerHTML = `<option value="">— Rellenar a mano —</option>` + reservas.map((r) => {
-                const instalacion = INSTALACIONES.find((i) => i.id === r.facility);
-                const dia = r.date.split("-").reverse().slice(0, 2).join("/");
-                return `<option value="${esc(r.id)}">${esc(instalacion ? instalacion.nombre : "Instalación")} · ${esc(r.court)} · ${dia} ${esc(r.time)}</option>`;
-            }).join("");
-            $("crear-desde-reserva-campo").hidden = reservas.length === 0;
-            return reservas;
-        }
-
-        let reservasDisponibles = [];
-        selReserva.addEventListener("change", () => {
-            const r = reservasDisponibles.find((x) => String(x.id) === selReserva.value);
-            if (!r) return;
-            selInstalacion.value = r.facility;
-            inputFecha.value = r.date;
-            sugerirPrecio();
-            actualizarHoras(r.time);
-            if (!$("crear-descripcion").value) {
+                ? `Pagaste ${normal} €/h por esta pista. Te proponemos salir a la mitad para atraer pujas.` : "";
+            if (r && !$("crear-descripcion").dataset.editado) {
                 $("crear-descripcion").value = `Reserva de ${r.court}. No puedo ir.`;
             }
-        });
+            actualizarDuraciones();
+            actualizarReparto();
+        }
 
-        selInstalacion.addEventListener("change", sugerirPrecio);
-        inputFecha.addEventListener("change", () => actualizarHoras());
-        selHora.addEventListener("change", actualizarDuraciones);
+        selReserva.addEventListener("change", elegirReserva);
+        inputPrecio.addEventListener("input", actualizarReparto);
+        $("crear-descripcion").addEventListener("input", (e) => (e.target.dataset.editado = "1"));
 
         $("btn-crear-subasta").addEventListener("click", () => {
             Auth.requerirLogin(() => {
                 form.reset();
-                const hoy = new Date();
-                const max = new Date();
-                max.setDate(hoy.getDate() + 30);
-                inputFecha.min = fechaISO(hoy);
-                inputFecha.max = fechaISO(max);
-                const manana = new Date();
-                manana.setDate(hoy.getDate() + 1);
-                inputFecha.value = fechaISO(manana);
                 selDuracion.value = "60";
-                actualizarHoras("18:00");
-                sugerirPrecio();
-                reservasDisponibles = prepararReservas();
+                delete $("crear-descripcion").dataset.editado;
+                reservas = reservasSubastables();
+                selReserva.innerHTML = reservas.map((r) => {
+                    const instalacion = instalacionReserva(r);
+                    const dia = r.date.split("-").reverse().slice(0, 2).join("/");
+                    return `<option value="${esc(r.id)}">${esc(instalacion ? instalacion.nombre : "Instalación")} · ${esc(r.court)} · ${dia} ${esc(r.time)}</option>`;
+                }).join("");
+                $("crear-sin-reservas").hidden = reservas.length > 0;
+                form.hidden = reservas.length === 0;
+                if (reservas.length) elegirReserva();
                 form.querySelector(".form-error").hidden = true;
                 $("create-modal").showModal();
-            }, "Inicia sesión para crear una subasta.");
+            }, "Inicia sesión para subastar una de tus reservas.");
         });
 
         form.addEventListener("submit", async (event) => {
@@ -587,17 +611,15 @@ const Subastas = (() => {
             const boton = form.querySelector("[type=submit]");
             boton.disabled = true;
             try {
-                const s = await Store.crearSubasta({
-                    instalacionId: datos.get("instalacion"),
-                    fecha: datos.get("fecha"),
-                    hora: datos.get("hora"),
+                const s = await Store.crearSubastaReventa({
+                    reservaId: datos.get("reserva"),
                     precioSalida: datos.get("precio"),
                     incremento: datos.get("incremento"),
                     duracionMin: datos.get("duracion"),
                     descripcion: datos.get("descripcion"),
                 });
                 $("create-modal").close();
-                UI.toast(`🔥 Subasta creada: ${s.titulo}`);
+                UI.toast(`🔁 Tu reserva de ${s.titulo} ya está en subasta.`);
                 cambiarFiltro("mias");
             } catch (error) {
                 const e = form.querySelector(".form-error");

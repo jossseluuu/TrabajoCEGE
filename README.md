@@ -35,6 +35,7 @@ TrabajoGabi/
 ├── supabase/
 │   ├── schema.sql            ← base de datos del servidor (pegar en Supabase)
 │   ├── admin.sql             ← permisos de administrador y panel admin
+│   ├── subastas.sql          ← subastas de última hora y reventa (ejecutar después de admin.sql)
 │   ├── opiniones.sql         ← actualización: opiniones compartidas
 │   └── reservas-sociales.sql ← actualización: mostrar nombre en la agenda
 ├── public/                   ← TODO lo que hay aquí es lo que se publica
@@ -74,6 +75,10 @@ TrabajoGabi/
 - Cuenta atrás en directo, aviso de *"Te han superado"*, ganador al terminar, filtros (**En curso**, **Finalizadas**, **Mis subastas**, **Mis pujas**) y cancelación mientras no haya pujas.
 - **Reservas** (`reservas.html`): una pista solo puede tenerla un usuario por turno. La agenda muestra la ocupación semanal y la actividad por día. Al reservar se puede elegir mostrar el nombre en la agenda.
 - **Perfil** (`perfil.html`): reservas activas y anteriores, subastas creadas, pujas en curso y subastas ganadas.
+- **Dos formatos de subasta:**
+  - **⚡ Última hora (automática):** en las instalaciones con reserva directa (pádel y tenis, configurable en `SUBASTA_AUTOMATICA` de `data.js`), toda pista que sigue libre cuando faltan 12 h o menos sale sola a subasta con un precio de salida de la **mitad de su precio normal**. Se cierra 15 min antes del partido y el ganador recibe la reserva. Mientras no hay pujas la subasta se calcula en la web; con la primera puja se crea en el servidor.
+  - **🔁 Reventa:** quien no puede ir subasta **su reserva** («Subastar mi reserva»). Al cerrar, la reserva pasa al ganador y el vendedor recibe el precio final **menos la comisión de CeutaPlay y el IPSI de esa comisión** (el formulario le enseña cuánto recibirá). Sin pujas, la reserva sigue siendo suya. Mientras está en subasta no se puede cancelar.
+  - La comisión y el IPSI salen del panel de facturación y se guardan en cada subasta al crearla. El panel separa lo que se liquida a las instalaciones (reservas y última hora) de lo que se paga a los usuarios (reventas).
 - **Subastas mejoradas:** resumen (en curso, terminan pronto, pujas, ahorro medio), filtro por deporte y orden, ahorro frente al precio normal de la pista, barra de tiempo, avisos en directo cuando te superan o ganas, y crear la subasta a partir de una de tus reservas. El formulario ya no deja elegir horas pasadas ni duraciones que terminen después del partido.
 - **Administración** (`admin.html`, en el menú aparece **Panel admin**). Secciones:
   - **Resumen:** cifras clave, avisos pendientes (nombres a revisar, opiniones ofensivas, subastas sin pujas a punto de terminar) y actividad reciente.
@@ -86,7 +91,7 @@ TrabajoGabi/
 
 ### 🛡️ Cuenta de administrador
 
-1. Ejecuta [`supabase/admin.sql`](supabase/admin.sql) en el SQL Editor de Supabase (y **vuelve a ejecutarlo** cada vez que cambie: crea las tablas de nombres prohibidos, moderación y ajustes de facturación). Marca como administrador a `admin@ceutaplay.es`; para añadir otro, cambia el correo de la última línea y vuelve a ejecutarla.
+1. Ejecuta [`supabase/admin.sql`](supabase/admin.sql) y después [`supabase/subastas.sql`](supabase/subastas.sql) en el SQL Editor de Supabase (y **vuelve a ejecutarlo** cada vez que cambie: crea las tablas de nombres prohibidos, moderación y ajustes de facturación). Marca como administrador a `admin@ceutaplay.es`; para añadir otro, cambia el correo de la última línea y vuelve a ejecutarla.
 2. La contraseña **no está en el repositorio**: se guarda en `privado/credenciales-admin.md`, que está en el `.gitignore`. Pídesela a quien gestione el proyecto.
 
 ### Dos modos de funcionamiento

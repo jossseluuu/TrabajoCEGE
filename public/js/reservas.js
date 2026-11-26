@@ -48,6 +48,7 @@ function shiftDate(date, days) {
 }
 
 function ownerLabel(booking) {
+    if (booking.enSubasta) return "⚡ En subasta de última hora";
     if (booking.userId === Store.usuarioActual()?.id) return "Tú";
     return booking.mostrarNombre ? Store.getUsuario(booking.userId)?.nombre || "Usuario" : "Nombre no compartido";
 }

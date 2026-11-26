@@ -366,6 +366,32 @@ const NOMBRES_PROHIBIDOS_BASE = [
 // cambiar desde el panel. El IPSI es el impuesto indirecto de Ceuta (en
 // lugar del IVA); confirmad el tipo aplicable con la asesoría.
 // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// Subastas: dos formatos
+//
+//  · "automatica" (última hora): una pista que sigue libre cuando faltan
+//    12 horas o menos para el turno sale sola a subasta, con un precio de
+//    salida de la mitad de su precio normal. Se cierra poco antes del
+//    partido y el ganador se queda la reserva. Lo cobra la instalación
+//    (menos la comisión de CeutaPlay).
+//  · "reventa": un usuario que no puede ir subasta su reserva. Al cerrar,
+//    la reserva pasa al ganador y el usuario recibe el precio final menos
+//    la comisión de CeutaPlay (y el IPSI de esa comisión).
+//
+// Si cambias estos valores, cambia también supabase/subastas.sql.
+// ---------------------------------------------------------------------
+const SUBASTA_AUTOMATICA = {
+    horasAntes: 12,          // las pistas libres salen a subasta 12 h antes del turno
+    cierreMinAntes: 15,      // la subasta se cierra 15 min antes de empezar
+    descuentoSalida: 0.5,    // precio de salida = mitad del precio normal
+    // Instalaciones con reserva directa (centros privados). Las públicas del
+    // ICD no entran. Una instalación puede forzarlo con subastaAutomatica: true/false.
+    deportes: ["Pádel", "Tenis"],
+};
+
+// Horario por defecto de las pistas (igual que en reservas.html)
+const HORARIO_DEFECTO = Array.from({ length: 13 }, (_, i) => `${String(i + 9).padStart(2, "0")}:00`);
+
 const FACTURACION_DEFECTO = {
     comisionReservas: 10,   // % sobre el precio de cada reserva directa
     comisionSubastas: 15,   // % sobre el precio final de cada subasta adjudicada

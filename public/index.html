@@ -86,14 +86,15 @@
                     <h2>Subastas de pistas</h2>
 
                     <p>
-                        ¿No puedes ir a tu reserva? Súbela a subasta y deja que
-                        otros jugadores pujen por ella. ¿Buscas pista de última hora?
-                        Puja y llévatela al mejor precio.
+                        <strong>⚡ Última hora:</strong> las pistas que siguen libres 12 horas antes
+                        salen solas a subasta a mitad de precio.
+                        <strong>🔁 Reventa:</strong> ¿no puedes ir a tu reserva? Súbela a subasta,
+                        la reserva pasa al ganador y tú recibes el dinero (menos una pequeña comisión).
                     </p>
                 </div>
 
                 <button type="button" class="hero-btn create-auction-btn" id="btn-crear-subasta">
-                    + Crear subasta
+                    🔁 Subastar mi reserva
                 </button>
 
             </div>
@@ -105,6 +106,9 @@
                 <div class="auction-filters" role="group" aria-label="Filtrar subastas">
                     <button type="button" class="auction-filter active" data-filtro="activas" aria-pressed="true">
                         En curso <span class="filter-count" id="contador-activas">0</span>
+                    </button>
+                    <button type="button" class="auction-filter" data-filtro="ultima-hora" aria-pressed="false">
+                        ⚡ Última hora <span class="filter-count" id="contador-ultima">0</span>
                     </button>
                     <button type="button" class="auction-filter" data-filtro="finalizadas" aria-pressed="false">Finalizadas</button>
                     <button type="button" class="auction-filter" data-filtro="mias" aria-pressed="false">Mis subastas</button>
@@ -220,30 +224,18 @@
         <div class="modal-box">
             <button type="button" class="modal-close" aria-label="Cerrar">×</button>
 
-            <span class="section-label">🔥 NUEVA SUBASTA</span>
+            <span class="section-label">🔁 REVENTA</span>
             <h2 id="create-title">Subasta tu reserva</h2>
+            <p class="form-hint">Si no puedes ir, otros jugadores pujan por tu reserva. Al terminar, la reserva pasa al ganador y tú recibes el precio final menos la comisión de CeutaPlay.</p>
+
+            <div id="crear-sin-reservas" class="form-notice" hidden>
+                No tienes reservas futuras que puedas subastar.
+                <a href="reservas.html">Reserva una pista</a> y, si luego no puedes ir, súbela aquí.
+            </div>
 
             <form id="create-form" class="modal-form">
-                <div id="crear-desde-reserva-campo" hidden>
-                    <label for="crear-desde-reserva">A partir de una de mis reservas</label>
-                    <select id="crear-desde-reserva">
-                        <option value="">— Rellenar a mano —</option>
-                    </select>
-                </div>
-
-                <label for="crear-instalacion">Instalación</label>
-                <select id="crear-instalacion" name="instalacion" required></select>
-
-                <div class="form-row">
-                    <div>
-                        <label for="crear-fecha">Fecha del partido</label>
-                        <input type="date" id="crear-fecha" name="fecha" required>
-                    </div>
-                    <div>
-                        <label for="crear-hora">Hora</label>
-                        <select id="crear-hora" name="hora" required></select>
-                    </div>
-                </div>
+                <label for="crear-desde-reserva">Reserva que quieres subastar</label>
+                <select id="crear-desde-reserva" name="reserva" required></select>
 
                 <div class="form-row">
                     <div>
@@ -268,6 +260,8 @@
                 <label for="crear-descripcion">Descripción (opcional)</label>
                 <textarea id="crear-descripcion" name="descripcion" rows="2" maxlength="200"
                           placeholder="Ej.: No puedo ir, incluye alquiler de palas."></textarea>
+
+                <div class="payout-box" id="crear-reparto" aria-live="polite"></div>
 
                 <p class="form-error" hidden></p>
 

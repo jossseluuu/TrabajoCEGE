@@ -87,11 +87,19 @@ function motivoRevision(u) {
 function comisionDe(instalacionId, tipo) {
     const bonificada = estado.ajustes.bonificadas?.[instalacionId];
     if (bonificada !== undefined) return Number(bonificada);
-    return tipo === "Subasta" ? estado.ajustes.comisionSubastas : estado.ajustes.comisionReservas;
+    return tipo === "Reserva" ? estado.ajustes.comisionReservas : estado.ajustes.comisionSubastas;
 }
 
+const TIPOS = {
+    "Reserva": "reserva",          // reserva directa: se liquida a la instalación
+    "Última hora": "auto",         // subasta automática: se liquida a la instalación
+    "Reventa": "reventa",          // reventa de un usuario: se paga al usuario vendedor
+};
+const esReventa = (m) => m.tipo === "Reventa";
+
 // Todas las transacciones que generan ingresos: reservas directas (precio de
-// la instalación) y subastas adjudicadas (precio final de la puja ganadora)
+// la instalación), subastas de última hora y reventas (precio final de la
+// puja ganadora). En las subastas se usa la comisión guardada al crearlas.
 function movimientos() {
     const ahora = ahoraCeuta();
     const lista = [];
@@ -106,16 +114,19 @@ function movimientos() {
     }
     for (const s of Store.listarSubastas()) {
         if (s.estado !== "finalizada" || !s.ganador) continue;
+        const reventa = s.tipo !== "automatica";
         lista.push({
-            fecha: s.fecha, hora: s.hora, tipo: "Subasta", instalacionId: Number(s.instalacionId),
-            cliente: s.ganador.nombre, importe: s.precioActual,
+            fecha: s.fecha, hora: s.hora, tipo: reventa ? "Reventa" : "Última hora",
+            instalacionId: Number(s.instalacionId), pista: s.pista || "",
+            cliente: s.ganador.nombre, vendedor: reventa ? (s.vendedor?.nombre || "—") : "",
+            importe: s.precioActual, pctFijo: s.comisionPct, ipsiFijo: s.ipsiPct,
             jugada: `${s.fecha}T${s.hora}` <= ahora,
         });
     }
     return lista.map((m) => {
-        const pct = comisionDe(m.instalacionId, m.tipo);
+        const pct = m.pctFijo ?? comisionDe(m.instalacionId, m.tipo);
         const comision = redondear(m.importe * pct / 100);
-        const ipsi = redondear(comision * estado.ajustes.ipsi / 100);
+        const ipsi = redondear(comision * (m.ipsiFijo ?? estado.ajustes.ipsi) / 100);
         return { ...m, pct, comision, ipsi, liquidar: redondear(m.importe - comision - ipsi) };
     }).sort((a, b) => `${b.fecha}T${b.hora}`.localeCompare(`${a.fecha}T${a.hora}`));
 }
@@ -150,7 +161,7 @@ function porInstalacion(lista) {
     return [...grupos.entries()].map(([id, ms]) => ({
         id, nombre: nombreInstalacion(id), movimientos: ms,
         reservas: ms.filter((m) => m.tipo === "Reserva").length,
-        subastas: ms.filter((m) => m.tipo === "Subasta").length,
+        subastas: ms.filter((m) => m.tipo === "Última hora").length,
         importe: sumar(ms, "importe"), comision: sumar(ms, "comision"),
         ipsi: sumar(ms, "ipsi"), liquidar: sumar(ms, "liquidar"),
         pct: [...new Set([comisionDe(id, "Reserva"), comisionDe(id, "Subasta")])].join(" / "),
@@ -195,14 +206,17 @@ function pintarFacturacion() {
         stat("Volumen gestionado", dinero(importe), nombrePeriodo(periodoActual())) +
         stat("Ingresos (comisiones)", dinero(comision), importe ? `${(comision / importe * 100).toLocaleString("es-ES", { maximumFractionDigits: 1 })} % del volumen` : "") +
         stat("IPSI repercutido", dinero(sumar(lista, "ipsi")), `${estado.ajustes.ipsi} % sobre la comisión`) +
-        stat("A liquidar a instalaciones", dinero(sumar(lista, "liquidar"))) +
-        stat("Transacciones", lista.length,
-            `${lista.filter((m) => m.tipo === "Reserva").length} reservas · ${lista.filter((m) => m.tipo === "Subasta").length} subastas`) +
+        stat("A liquidar a instalaciones", dinero(sumar(lista.filter((m) => !esReventa(m)), "liquidar")),
+            "reservas y subastas de última hora") +
+        stat("A pagar a usuarios", dinero(sumar(lista.filter(esReventa), "liquidar")), "por reventas de reservas") +
+        stat("Transacciones", lista.length, Object.keys(TIPOS)
+            .map((t) => `${lista.filter((m) => m.tipo === t).length} ${t.toLowerCase()}`).join(" · ")) +
         stat("Ticket medio", dinero(lista.length ? importe / lista.length : 0));
 
     pintarGrafico(todos);
 
-    const grupos = porInstalacion(lista);
+    const deInstalaciones = lista.filter((m) => !esReventa(m));
+    const grupos = porInstalacion(deInstalaciones);
     $("fact-instalaciones").innerHTML = grupos.map((g) => `
         <tr>
             <td>${esc(g.nombre)}${estado.ajustes.bonificadas?.[g.id] !== undefined ? ` <span class="admin-tag">bonificada</span>` : ""}</td>
@@ -220,16 +234,29 @@ function pintarFacturacion() {
             <th>Total</th>
             <td class="num">${grupos.reduce((n, g) => n + g.reservas, 0)}</td>
             <td class="num">${grupos.reduce((n, g) => n + g.subastas, 0)}</td>
-            <td class="num">${dinero(importe)}</td><td></td>
-            <td class="num">${dinero(comision)}</td>
-            <td class="num">${dinero(sumar(lista, "ipsi"))}</td>
-            <td class="num"><strong>${dinero(sumar(lista, "liquidar"))}</strong></td><td></td>
+            <td class="num">${dinero(sumar(deInstalaciones, "importe"))}</td><td></td>
+            <td class="num">${dinero(sumar(deInstalaciones, "comision"))}</td>
+            <td class="num">${dinero(sumar(deInstalaciones, "ipsi"))}</td>
+            <td class="num"><strong>${dinero(sumar(deInstalaciones, "liquidar"))}</strong></td><td></td>
         </tr>` : "";
+
+    const reventas = lista.filter(esReventa);
+    $("fact-reventas").innerHTML = reventas.map((m) => `
+        <tr>
+            <td>${formatoDia(m.fecha)} ${esc(m.hora)}</td>
+            <td>${esc(nombreInstalacion(m.instalacionId))}${m.pista ? ` · ${esc(m.pista)}` : ""}</td>
+            <td>${esc(m.vendedor)}</td>
+            <td>${esc(m.cliente)}</td>
+            <td class="num">${dinero(m.importe)}</td>
+            <td class="num">${dinero(m.comision)} <small>(${m.pct} %)</small></td>
+            <td class="num">${dinero(m.ipsi)}</td>
+            <td class="num"><strong>${dinero(m.liquidar)}</strong></td>
+        </tr>`).join("") || filaVacia(8, "No hay reventas adjudicadas en este periodo.");
 
     $("fact-movimientos").innerHTML = lista.slice(0, 200).map((m) => `
         <tr>
             <td>${formatoDia(m.fecha)} ${esc(m.hora)}</td>
-            <td><span class="admin-tag tag-${m.tipo.toLowerCase()}">${m.tipo}</span></td>
+            <td><span class="admin-tag tag-${TIPOS[m.tipo]}">${m.tipo}</span></td>
             <td>${esc(nombreInstalacion(m.instalacionId))}</td>
             <td>${esc(m.cliente)}</td>
             <td class="num">${dinero(m.importe)}</td>
@@ -278,7 +305,7 @@ function exportarCSV() {
 
 function mostrarLiquidacion(instalacionId) {
     const periodo = periodoActual();
-    const grupo = porInstalacion(movimientos().filter((m) => enPeriodo(m)))
+    const grupo = porInstalacion(movimientos().filter((m) => enPeriodo(m) && !esReventa(m)))
         .find((g) => g.id === Number(instalacionId));
     if (!grupo) return;
     const inst = instalacion(instalacionId);
@@ -335,7 +362,7 @@ function pintarSubastas() {
         .map((s) => {
             const abierta = estado.abiertas.has(s.id);
             const detalle = abierta ? `
-                <tr class="admin-detalle"><td colspan="8">
+                <tr class="admin-detalle"><td colspan="9">
                     ${s.descripcion ? `<p>“${esc(s.descripcion)}”</p>` : ""}
                     ${s.pujas.length ? `<ol class="admin-pujas">${s.pujas.map((p, i) => `
                         <li>${i === 0 ? "🏆 " : ""}<strong>${p.cantidad} €</strong> · ${esc(nombreUsuario(p.usuarioId))}
@@ -345,9 +372,10 @@ function pintarSubastas() {
                 </td></tr>` : "";
             return `
             <tr>
-                <td>${esc(s.titulo)}</td>
+                <td>${esc(s.titulo)}${s.pista ? `<br><small>${esc(s.pista)}</small>` : ""}</td>
+                <td><span class="admin-tag tag-${s.tipo === "automatica" ? "auto" : "reventa"}">${s.tipo === "automatica" ? "Última hora" : "Reventa"}</span></td>
                 <td>${formatoDia(s.fecha)} ${esc(s.hora)}</td>
-                <td>${esc(s.vendedor ? s.vendedor.nombre : "—")}</td>
+                <td>${esc(s.tipo === "automatica" ? "Instalación" : s.vendedor ? s.vendedor.nombre : "—")}</td>
                 <td><span class="admin-estado estado-${s.estado}">${s.estado}</span></td>
                 <td class="num">${s.precioActual} €</td>
                 <td class="num">${s.pujas.length}</td>
@@ -358,7 +386,7 @@ function pintarSubastas() {
                 </div></td>
             </tr>${detalle}`;
         });
-    $("admin-subastas").innerHTML = filas.join("") || filaVacia(8, "No hay subastas que coincidan.");
+    $("admin-subastas").innerHTML = filas.join("") || filaVacia(9, "No hay subastas que coincidan.");
 }
 
 
