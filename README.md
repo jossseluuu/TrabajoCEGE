@@ -75,11 +75,18 @@ TrabajoGabi/
 - **Reservas** (`reservas.html`): una pista solo puede tenerla un usuario por turno. La agenda muestra la ocupación semanal y la actividad por día. Al reservar se puede elegir mostrar el nombre en la agenda.
 - **Perfil** (`perfil.html`): reservas activas y anteriores, subastas creadas, pujas en curso y subastas ganadas.
 - **Subastas mejoradas:** resumen (en curso, terminan pronto, pujas, ahorro medio), filtro por deporte y orden, ahorro frente al precio normal de la pista, barra de tiempo, avisos en directo cuando te superan o ganas, y crear la subasta a partir de una de tus reservas. El formulario ya no deja elegir horas pasadas ni duraciones que terminen después del partido.
-- **Administración** (`admin.html`): las cuentas administradoras ven a todos los usuarios (con su correo y actividad), pueden cancelar cualquier subasta y borrar cualquier reserva. En el menú les aparece **Panel admin**.
+- **Administración** (`admin.html`, en el menú aparece **Panel admin**). Secciones:
+  - **Resumen:** cifras clave, avisos pendientes (nombres a revisar, opiniones ofensivas, subastas sin pujas a punto de terminar) y actividad reciente.
+  - **Facturación:** modelo de comisión por transacción. Comisión de reservas y de subastas, IPSI sobre la comisión y comisiones bonificadas por instalación (RSC: escuelas base, deporte femenino). Ingresos por mes, liquidación por instalación (imprimible / PDF) y exportación de movimientos a CSV.
+  - **Subastas:** tasa de éxito, precio medio, candidatas a *pista solidaria*, filtros, ver las pujas, anular una puja y cancelar subastas.
+  - **Reservas:** listado con precio y borrado.
+  - **Usuarios:** suspender / reactivar cuentas (una cuenta suspendida no puede reservar, pujar, subastar ni opinar) y renombrar.
+  - **Interacción:** usuarios activos, opiniones (con aviso de lenguaje no permitido y borrado) y registro de toda la actividad.
+  - **Nombres prohibidos:** lista editable de términos que no se permiten en el nombre de usuario (insultos, odio, contenido sexual, suplantar al equipo…). Se comprueba al registrarse, tanto en la web como en el servidor, sin tildes y deshaciendo trucos como `1d10t4` o `i.d.i.o.t.a`. Cada término puede ser «en cualquier parte» o «solo palabra completa» (para no bloquear nombres reales como *Zorrilla* o *Diputado*).
 
 ### 🛡️ Cuenta de administrador
 
-1. Ejecuta [`supabase/admin.sql`](supabase/admin.sql) en el SQL Editor de Supabase (una vez). Marca como administrador a `admin@ceutaplay.es`; para añadir otro, cambia el correo de la última línea y vuelve a ejecutarla.
+1. Ejecuta [`supabase/admin.sql`](supabase/admin.sql) en el SQL Editor de Supabase (y **vuelve a ejecutarlo** cada vez que cambie: crea las tablas de nombres prohibidos, moderación y ajustes de facturación). Marca como administrador a `admin@ceutaplay.es`; para añadir otro, cambia el correo de la última línea y vuelve a ejecutarla.
 2. La contraseña **no está en el repositorio**: se guarda en `privado/credenciales-admin.md`, que está en el `.gitignore`. Pídesela a quien gestione el proyecto.
 
 ### Dos modos de funcionamiento
@@ -87,7 +94,7 @@ TrabajoGabi/
 | Modo | Cuándo | Qué pasa |
 |------|--------|----------|
 | 🟢 **Servidor** | `public/js/config.js` tiene la URL y la clave de Supabase | Todos los dispositivos ven las mismas cuentas, subastas, pujas y reservas, **en tiempo real**. Las reglas se comprueban en el servidor. |
-| 🟡 **Local** | `config.js` vacío | Todo se guarda en el navegador. Útil para probar sin servidor; trae cuentas de prueba (`ana@ceutaplay.es`, `luis@ceutaplay.es`, `marta@ceutaplay.es`, contraseña `demo1234`). |
+| 🟡 **Local** | `config.js` vacío | Todo se guarda en el navegador. Útil para probar sin servidor; trae cuentas de prueba (`ana@ceutaplay.es`, `luis@ceutaplay.es`, `marta@ceutaplay.es` y el administrador `admin@ceutaplay.es`, contraseña `demo1234`) y algunas reservas de ejemplo para el panel de facturación. |
 
 El pie de la página principal indica en qué modo está funcionando.
 

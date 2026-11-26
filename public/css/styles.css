@@ -2349,3 +2349,460 @@ nav a:focus-visible {
     border-radius: 6px;
     background: #f1f5f9;
 }
+
+/* ---------- Panel de administración: secciones nuevas ---------- */
+
+.admin-section > * + * {
+    margin-top: 20px;
+}
+
+.admin-h2 {
+    margin-bottom: 12px;
+}
+
+.admin-hint {
+    color: var(--text);
+    font-size: 13px;
+}
+
+.admin-notice {
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    border: 1px solid #fde68a;
+    border-radius: 12px;
+    background: #fffbeb;
+    color: #92400e;
+    font-weight: 600;
+}
+
+.admin-count {
+    display: inline-block;
+    min-width: 20px;
+    margin-left: 4px;
+    padding: 0 6px;
+    border-radius: 10px;
+    background: #dc2626;
+    color: white;
+    font-size: 12px;
+    line-height: 20px;
+    text-align: center;
+}
+
+.admin-stat-note {
+    margin-top: 2px;
+    color: var(--text);
+    font-size: 12px;
+}
+
+.admin-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+    gap: 20px;
+}
+
+.admin-toolbar,
+.admin-filtros {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.admin-filtros {
+    justify-content: flex-start;
+}
+
+.admin-toolbar label,
+.admin-form label {
+    display: grid;
+    min-width: 0;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--dark);
+}
+
+.admin-toolbar select,
+.admin-form input,
+.admin-form select {
+    width: 100%;
+    min-width: 0;
+    padding: 10px 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background: white;
+    font: inherit;
+    font-weight: 500;
+}
+
+.admin-form {
+    display: grid;
+    gap: 14px;
+    align-content: start;
+}
+
+.admin-form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    align-items: end;
+    gap: 12px;
+}
+
+.admin-fieldset {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+}
+
+.admin-fieldset legend {
+    padding: 0 6px;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.admin-btn {
+    padding: 10px 16px;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background: white;
+    color: var(--dark);
+    font-weight: 700;
+}
+
+.admin-btn:hover {
+    background: var(--light);
+}
+
+.admin-table .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.admin-table tfoot th,
+.admin-table tfoot td {
+    border-top: 2px solid #cbd5e1;
+    border-bottom: none;
+    font-weight: 700;
+}
+
+.admin-table .admin-wrap {
+    min-width: 260px;
+    white-space: normal;
+}
+
+.admin-acciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.admin-action-neutral {
+    border-color: #cbd5e1;
+    color: var(--dark);
+}
+
+.admin-action-neutral:hover {
+    background: var(--light);
+}
+
+.admin-action-ok {
+    border-color: #bbf7d0;
+    color: #15803d;
+}
+
+.admin-action-ok:hover {
+    background: #f0fdf4;
+}
+
+.admin-tag {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 6px;
+    background: #f1f5f9;
+    color: var(--text);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.tag-subasta {
+    background: #ede9fe;
+    color: #6d28d9;
+}
+
+.tag-reserva {
+    background: #dbeafe;
+    color: var(--primary-dark);
+}
+
+.admin-warn {
+    color: #b45309;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: normal;
+}
+
+.admin-row-warn {
+    background: #fffbeb;
+}
+
+.admin-stars-off {
+    color: #cbd5e1;
+}
+
+.admin-detalle td {
+    background: var(--light);
+    white-space: normal;
+}
+
+.admin-pujas {
+    display: grid;
+    gap: 6px;
+    padding-left: 20px;
+}
+
+.admin-pujas .admin-action {
+    margin-left: 8px;
+    padding: 2px 10px;
+}
+
+/* Listas de avisos y actividad */
+
+.admin-alertas,
+.admin-feed {
+    display: grid;
+    gap: 8px;
+    list-style: none;
+    padding: 0;
+}
+
+.admin-alertas li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+}
+
+.admin-feed {
+    max-height: 520px;
+    overflow-y: auto;
+}
+
+.admin-feed li {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: baseline;
+    gap: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 14px;
+}
+
+.admin-feed time {
+    color: var(--text);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+/* Etiquetas (términos prohibidos, bonificaciones) */
+
+.admin-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    list-style: none;
+    padding: 0;
+}
+
+.admin-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 4px 4px 12px;
+    border: 1px solid #fecaca;
+    border-radius: 20px;
+    background: #fef2f2;
+    color: #991b1b;
+    font-size: 14px;
+}
+
+.admin-chip.chip-palabra {
+    border-color: #fde68a;
+    background: #fffbeb;
+    color: #92400e;
+}
+
+.admin-chip button {
+    width: 24px;
+    height: 24px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.06);
+    color: inherit;
+    line-height: 1;
+}
+
+.admin-chip button:hover {
+    background: rgba(0, 0, 0, 0.14);
+}
+
+#fact-bonificadas .admin-chip {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.admin-test {
+    min-height: 24px;
+    font-weight: 700;
+}
+
+.admin-test.is-ok { color: #15803d; }
+.admin-test.is-bad { color: #b91c1c; }
+
+/* Gráfico de barras de ingresos mensuales (una sola serie) */
+
+.admin-chart {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    align-items: end;
+    gap: 2px;
+    height: 220px;
+    padding-top: 24px;
+    border-bottom: 1px solid #cbd5e1;
+}
+
+.admin-bar {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+    outline: none;
+}
+
+.admin-bar-fill {
+    width: min(36px, 70%);
+    border-radius: 4px 4px 0 0;
+    background: var(--primary);
+    opacity: 0.55;
+    transition: opacity 0.15s;
+}
+
+.admin-bar.is-selected .admin-bar-fill,
+.admin-bar:hover .admin-bar-fill,
+.admin-bar:focus-visible .admin-bar-fill {
+    opacity: 1;
+}
+
+.admin-bar-value {
+    margin-bottom: 4px;
+    color: var(--dark);
+    font-size: 11px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.admin-bar-label {
+    position: absolute;
+    bottom: -22px;
+    color: var(--text);
+    font-size: 12px;
+    text-transform: capitalize;
+}
+
+.admin-bar-tip {
+    position: absolute;
+    bottom: calc(100% - 10px);
+    z-index: 2;
+    display: none;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: var(--dark);
+    color: white;
+    font-size: 12px;
+    line-height: 1.4;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.admin-bar:hover .admin-bar-tip,
+.admin-bar:focus-visible .admin-bar-tip {
+    display: block;
+}
+
+.admin-chart + * {
+    margin-top: 30px;
+}
+
+/* Liquidación imprimible */
+
+.admin-liquidacion {
+    width: min(760px, 94vw);
+    padding: 32px;
+}
+
+.liq-cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--dark);
+}
+
+.liq-cabecera dl,
+.liq-totales {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 4px 16px;
+    font-size: 14px;
+}
+
+.liq-cabecera dt,
+.liq-totales dt {
+    color: var(--text);
+}
+
+.liq-totales {
+    justify-content: end;
+    margin: 20px 0;
+}
+
+.liq-totales dd {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.liq-totales .liq-total {
+    padding-top: 6px;
+    border-top: 1px solid #cbd5e1;
+    color: var(--dark);
+    font-size: 16px;
+    font-weight: 800;
+}
+
+@media print {
+    body:has(.admin-liquidacion[open]) > *:not(main),
+    body:has(.admin-liquidacion[open]) main > *:not(.admin-liquidacion),
+    .admin-liquidacion .modal-close,
+    .admin-noprint {
+        display: none !important;
+    }
+
+    .admin-liquidacion[open] {
+        position: static;
+        width: 100%;
+        max-height: none;
+        box-shadow: none;
+    }
+}

@@ -272,7 +272,108 @@ const USUARIOS_DEMO = [
     { nombre: "Ana", email: "ana@ceutaplay.es", password: "demo1234" },
     { nombre: "Luis", email: "luis@ceutaplay.es", password: "demo1234" },
     { nombre: "Marta", email: "marta@ceutaplay.es", password: "demo1234" },
+    // Cuenta de administrador del modo local (en el servidor se nombra con supabase/admin.sql)
+    { nombre: "Equipo CeutaPlay", email: "admin@ceutaplay.es", password: "demo1234", admin: true },
 ];
+
+// Reservas de ejemplo (modo local) para que el panel de facturación tenga datos.
+// diasDesdeHoy: negativo = ya jugada, positivo = próxima.
+const RESERVAS_DEMO = [
+    { email: "ana@ceutaplay.es", instalacionId: 1, pista: "Pista 1", diasDesdeHoy: -20, hora: "19:00" },
+    { email: "luis@ceutaplay.es", instalacionId: 2, pista: "Campo José Benoliel", diasDesdeHoy: -12, hora: "18:00" },
+    { email: "marta@ceutaplay.es", instalacionId: 16, pista: "Kayak 1", diasDesdeHoy: -9, hora: "11:00" },
+    { email: "ana@ceutaplay.es", instalacionId: 4, pista: "Doble 1", diasDesdeHoy: -5, hora: "10:00" },
+    { email: "luis@ceutaplay.es", instalacionId: 1, pista: "Pista 2", diasDesdeHoy: -2, hora: "20:00" },
+    { email: "marta@ceutaplay.es", instalacionId: 17, pista: "Tabla 2", diasDesdeHoy: 2, hora: "12:00" },
+    { email: "ana@ceutaplay.es", instalacionId: 3, pista: "Pista 1", diasDesdeHoy: 3, hora: "17:00" },
+    { email: "luis@ceutaplay.es", instalacionId: 10, pista: "Tuhami Al Lal", diasDesdeHoy: -35, hora: "19:00" },
+    { email: "marta@ceutaplay.es", instalacionId: 6, pista: "Pista 4", diasDesdeHoy: -48, hora: "18:00" },
+];
+
+// ---------------------------------------------------------------------
+// Moderación de nombres de usuario
+//
+// Términos que no se permiten en el nombre visible (insultos, odio,
+// contenido sexual y nombres que suplantan al equipo). El administrador
+// puede añadir o quitar términos desde el panel; esta es la lista inicial
+// (la misma que siembra supabase/admin.sql).
+//
+// modo "contiene": se rechaza si aparece en cualquier parte del nombre
+//                  (también escrito con trucos: "1d10t4", "i.d.i.o.t.a"…).
+// modo "palabra":  solo si es una palabra completa. Se usa para términos
+//                  cortos que forman parte de nombres reales
+//                  (p. ej. "puta" en "Diputado", "zorra" en "Zorrilla").
+// ---------------------------------------------------------------------
+const NOMBRES_PROHIBIDOS_BASE = [
+    // Suplantación del equipo / cuentas oficiales
+    { termino: "admin", modo: "contiene" },
+    { termino: "administrador", modo: "contiene" },
+    { termino: "moderador", modo: "contiene" },
+    { termino: "ceutaplay", modo: "contiene" },
+    { termino: "soporte", modo: "palabra" },
+    { termino: "oficial", modo: "palabra" },
+    { termino: "root", modo: "palabra" },
+    { termino: "staff", modo: "palabra" },
+    // Insultos
+    { termino: "mierda", modo: "contiene" },
+    { termino: "cabron", modo: "contiene" },
+    { termino: "gilipollas", modo: "contiene" },
+    { termino: "imbecil", modo: "contiene" },
+    { termino: "idiota", modo: "contiene" },
+    { termino: "subnormal", modo: "contiene" },
+    { termino: "retrasado", modo: "contiene" },
+    { termino: "mongolo", modo: "contiene" },
+    { termino: "capullo", modo: "contiene" },
+    { termino: "pringado", modo: "contiene" },
+    { termino: "hijoputa", modo: "contiene" },
+    { termino: "malparido", modo: "contiene" },
+    { termino: "puta", modo: "palabra" },
+    { termino: "puto", modo: "palabra" },
+    { termino: "zorra", modo: "palabra" },
+    { termino: "joder", modo: "contiene" },
+    // Odio y discriminación
+    { termino: "maricon", modo: "contiene" },
+    { termino: "negrata", modo: "contiene" },
+    { termino: "sudaca", modo: "contiene" },
+    { termino: "panchito", modo: "contiene" },
+    { termino: "hitler", modo: "contiene" },
+    { termino: "nazi", modo: "palabra" },
+    { termino: "kkk", modo: "contiene" },
+    { termino: "terrorista", modo: "contiene" },
+    // Contenido sexual o violento
+    { termino: "polla", modo: "palabra" },
+    { termino: "verga", modo: "palabra" },
+    { termino: "culo", modo: "palabra" },
+    { termino: "cono", modo: "palabra" },
+    { termino: "follar", modo: "contiene" },
+    { termino: "porno", modo: "contiene" },
+    { termino: "pedofilo", modo: "contiene" },
+    { termino: "violador", modo: "contiene" },
+    // Inglés
+    { termino: "fuck", modo: "contiene" },
+    { termino: "shit", modo: "contiene" },
+    { termino: "bitch", modo: "contiene" },
+    { termino: "nigger", modo: "contiene" },
+    { termino: "nigga", modo: "contiene" },
+    { termino: "whore", modo: "contiene" },
+    { termino: "cunt", modo: "palabra" },
+];
+
+// ---------------------------------------------------------------------
+// Facturación (modelo de negocio: comisión por transacción)
+//
+// Valores iniciales del panel de facturación. El administrador los puede
+// cambiar desde el panel. El IPSI es el impuesto indirecto de Ceuta (en
+// lugar del IVA); confirmad el tipo aplicable con la asesoría.
+// ---------------------------------------------------------------------
+const FACTURACION_DEFECTO = {
+    comisionReservas: 10,   // % sobre el precio de cada reserva directa
+    comisionSubastas: 15,   // % sobre el precio final de cada subasta adjudicada
+    ipsi: 4,                // % de IPSI sobre la comisión de la plataforma
+    // Comisión bonificada por instalación (RSC: escuelas deportivas base,
+    // deporte femenino…). { [instalacionId]: porcentaje }
+    bonificadas: {},
+};
 
 // Subastas de ejemplo. Los tiempos son relativos al momento en que se crean:
 // - terminaEnMin: minutos que quedan para que termine la subasta

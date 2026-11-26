@@ -30,6 +30,7 @@ function fechaISO(fecha) {
 const Store = (() => {
 
     const MINUTO = 60 * 1000;
+    const CUENTA_SUSPENDIDA = "Tu cuenta está suspendida. Escribe a CeutaPlay si crees que es un error.";
     // CONFIG_SUPABASE viene de js/config.js; window.supabase, de la librería de Supabase
     const config = typeof CONFIG_SUPABASE !== "undefined" ? CONFIG_SUPABASE : {};
     const hayConfig = Boolean(config.url && config.anonKey);
@@ -48,11 +49,92 @@ const Store = (() => {
         return String(email || "").trim().toLowerCase();
     }
 
-    function validarRegistro({ nombre, email, password }) {
-        nombre = String(nombre || "").trim();
+    // ---------- moderación de nombres ----------
+    // La misma lógica está en SQL (supabase/admin.sql → motivo_nombre_no_permitido)
+    // para que el servidor también lo compruebe.
+
+    const LEET = { 0: "o", 1: "i", 3: "e", 4: "a", 5: "s", 7: "t", "@": "a", "$": "s" };
+
+    // minúsculas, sin tildes y deshaciendo trucos como "1d10t4" → "idiota"
+    function normalizarNombre(texto) {
+        return String(texto || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+            .replace(/[013457@$]/g, (c) => LEET[c]);
+    }
+
+    const colapsar = (t) => t.replace(/(.)\1+/g, "$1"); // "puuuta" → "puta"
+
+    function terminoEnNombre(nombre, { termino, modo }) {
+        const t = normalizarNombre(termino).replace(/[^a-z0-9]/g, "");
+        if (!t) return false;
+        const palabras = normalizarNombre(nombre).split(/[^a-z0-9]+/).filter(Boolean);
+        const junto = palabras.join("");           // "i.d.i.o.t.a" → "idiota"
+        const tc = colapsar(t);
+        const conColapso = tc.length >= 4;         // evita que "kkk" → "k" lo bloquee todo
+        if (modo === "palabra") {
+            return palabras.includes(t) || junto === t ||
+                (conColapso && (colapsar(junto) === tc || palabras.some((p) => colapsar(p) === tc)));
+        }
+        return junto.includes(t) || (conColapso && colapsar(junto).includes(tc));
+    }
+
+    // Devuelve el motivo por el que un nombre no se permite, o null si es válido
+    function motivoNombre(nombre, lista = NOMBRES_PROHIBIDOS_BASE) {
+        const n = String(nombre || "").trim();
+        if (n.length < 2) return "El nombre debe tener al menos 2 caracteres.";
+        if (n.length > 40) return "El nombre no puede tener más de 40 caracteres.";
+        if (/@|https?:|www\.|\.(com|es|net|org|io)\b/i.test(n)) return "No se permiten correos ni enlaces en el nombre.";
+        if (!/^[\p{L}\p{M}\p{N} ._'-]+$/u.test(n)) return "El nombre solo puede tener letras, números, espacios y los signos . _ - '";
+        if ((n.match(/\p{L}/gu) || []).length < 2) return "El nombre debe tener al menos 2 letras.";
+        if (/(.)\1{3,}/u.test(n)) return "El nombre tiene demasiados caracteres repetidos seguidos.";
+        if (lista.some((e) => terminoEnNombre(n, e))) return "Ese nombre no está permitido en CeutaPlay. Elige otro, por favor.";
+        return null;
+    }
+
+    // Para comentarios: se mira palabra a palabra (no el texto junto)
+    function textoConTerminoProhibido(texto, lista) {
+        const palabras = normalizarNombre(texto).split(/[^a-z0-9]+/).filter(Boolean);
+        return lista.some(({ termino, modo }) => {
+            const t = normalizarNombre(termino).replace(/[^a-z0-9]/g, "");
+            return t && palabras.some((p) => (modo === "palabra" ? p === t : p.includes(t)));
+        });
+    }
+
+    function validarNombre(nombre, lista) {
+        const motivo = motivoNombre(nombre, lista);
+        if (motivo) throw new Error(motivo);
+        return String(nombre).trim();
+    }
+
+    function validarTermino(termino, modo) {
+        const t = String(termino || "").trim().toLowerCase();
+        if (normalizarNombre(t).replace(/[^a-z0-9]/g, "").length < 3) {
+            throw new Error("El término debe tener al menos 3 letras o números.");
+        }
+        if (t.length > 40) throw new Error("El término no puede tener más de 40 caracteres.");
+        return { termino: t, modo: modo === "palabra" ? "palabra" : "contiene" };
+    }
+
+    function validarAjustes(a) {
+        const pct = (v, nombre) => {
+            const n = Number(v);
+            if (!(n >= 0 && n <= 100)) throw new Error(`${nombre}: indica un porcentaje entre 0 y 100.`);
+            return Math.round(n * 100) / 100;
+        };
+        const bonificadas = {};
+        for (const [id, v] of Object.entries(a.bonificadas || {})) {
+            if (INSTALACIONES.some((i) => i.id === Number(id))) bonificadas[id] = pct(v, "Comisión bonificada");
+        }
+        return {
+            comisionReservas: pct(a.comisionReservas, "Comisión de reservas"),
+            comisionSubastas: pct(a.comisionSubastas, "Comisión de subastas"),
+            ipsi: pct(a.ipsi, "IPSI"),
+            bonificadas,
+        };
+    }
+
+    function validarRegistro({ nombre, email, password }, lista) {
+        nombre = validarNombre(nombre, lista);
         email = normalizarEmail(email);
-        if (nombre.length < 2) throw new Error("El nombre debe tener al menos 2 caracteres.");
-        if (nombre.length > 40) throw new Error("El nombre no puede tener más de 40 caracteres.");
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("El correo no es válido.");
         if (String(password || "").length < 6) throw new Error("La contraseña debe tener al menos 6 caracteres.");
         return { nombre, email, password };
@@ -92,7 +174,7 @@ const Store = (() => {
 
     // Añade a una subasta los campos calculados (estado, puja actual, ganador…)
     function enriquecer(subasta, ahora, getUsuario) {
-        const pujas = [...subasta.pujas].sort((a, b) => b.cantidad - a.cantidad || a.fecha - b.fecha);
+        const pujas = subasta.pujas.map((p) => ({ ...p, id: String(p.id ?? `${p.fecha}-${p.usuarioId}`) })).sort((a, b) => b.cantidad - a.cantidad || a.fecha - b.fecha);
         const mejor = pujas[0] || null;
 
         let estado = "activa";
@@ -204,8 +286,9 @@ const Store = (() => {
                 }));
             },
             async pujas() {
-                const filas = comprobar(await client.from("pujas").select("subasta_id, usuario_id, cantidad, fecha"));
+                const filas = comprobar(await client.from("pujas").select("id, subasta_id, usuario_id, cantidad, fecha"));
                 datos.pujas = filas.map((p) => ({
+                    id: p.id,
                     subastaId: p.subasta_id,
                     usuarioId: p.usuario_id,
                     cantidad: p.cantidad,
@@ -217,7 +300,7 @@ const Store = (() => {
                     datos.reservas = [];
                     return;
                 }
-                const campos = "id, usuario_id, instalacion_id, pista, fecha, hora";
+                const campos = "id, usuario_id, instalacion_id, pista, fecha, hora, creada";
                 let resultado = await client.from("reservas").select(`${campos}, mostrar_nombre`);
                 if (resultado.error?.code === "42703" || resultado.error?.code === "PGRST204") {
                     nombresEnAgenda = false;
@@ -233,6 +316,7 @@ const Store = (() => {
                     court: r.pista,
                     date: r.fecha,
                     time: r.hora,
+                    creada: Date.parse(r.creada) || null,
                     mostrarNombre: r.mostrar_nombre === true,
                 }));
             },
@@ -284,13 +368,24 @@ const Store = (() => {
                 perfil = await client.from("perfiles").select("nombre").eq("id", usuario.id).maybeSingle();
             }
             if (perfil.data) nombre = perfil.data.nombre;
+            // moderacion_usuarios solo existe si se ha ejecutado supabase/admin.sql
+            const moderacion = await client.from("moderacion_usuarios")
+                .select("bloqueado").eq("usuario_id", usuario.id).maybeSingle();
             sesion = {
                 id: usuario.id,
                 email: usuario.email,
                 nombre: nombre || usuario.email.split("@")[0],
                 admin: Boolean(perfil.data && perfil.data.es_admin),
+                bloqueado: Boolean(!moderacion.error && moderacion.data && moderacion.data.bloqueado),
             };
         }
+
+        // Lista de nombres prohibidos que conoce este navegador (la del
+        // servidor solo la puede leer un administrador)
+        let listaProhibidos = NOMBRES_PROHIBIDOS_BASE;
+
+        // ¿Existe la función/tabla? (si no se ha ejecutado admin.sql, no)
+        const noExiste = (error) => ["PGRST202", "PGRST205", "42P01", "42883"].includes(error && error.code);
 
         async function inicializar() {
             const [hora] = await Promise.all([
@@ -331,7 +426,11 @@ const Store = (() => {
         // ---------- cuentas ----------
 
         async function registrar(datosRegistro) {
-            const { nombre, email, password } = validarRegistro(datosRegistro);
+            const { nombre, email, password } = validarRegistro(datosRegistro, listaProhibidos);
+            // El servidor tiene la lista actualizada por el administrador
+            const control = await client.rpc("comprobar_nombre", { p_nombre: nombre });
+            if (!control.error && control.data) throw new Error(control.data);
+            if (control.error && !noExiste(control.error)) throw new Error(traducirError(control.error));
             sessionStorage.setItem(RECORDAR, "0");
             const resultado = comprobar(await client.auth.signUp({
                 email,
@@ -378,8 +477,13 @@ const Store = (() => {
             if (!sesion) throw new Error("Tienes que iniciar sesión.");
         }
 
-        async function crearSubasta(datosSubasta) {
+        function exigirActivo() {
             exigirSesion();
+            if (sesion.bloqueado) throw new Error(CUENTA_SUSPENDIDA);
+        }
+
+        async function crearSubasta(datosSubasta) {
+            exigirActivo();
             const v = validarSubasta(datosSubasta);
             const id = comprobar(await client.rpc("crear_subasta", {
                 p_instalacion_id: v.instalacion.id,
@@ -397,7 +501,7 @@ const Store = (() => {
         }
 
         async function pujar(subastaId, cantidad) {
-            exigirSesion();
+            exigirActivo();
             cantidad = Number(cantidad);
             if (!Number.isInteger(cantidad)) throw new Error("La puja tiene que ser un número entero de euros.");
             try {
@@ -422,7 +526,7 @@ const Store = (() => {
             r.facility === facility && r.court === court && r.date === date && r.time === time);
 
         async function reservar({ facility, court, date, time, mostrarNombre = false }) {
-            exigirSesion();
+            exigirActivo();
             comprobar(await client.from("reservas").insert({
                 instalacion_id: facility, pista: court, fecha: date, hora: time,
                 ...(mostrarNombre && nombresEnAgenda ? { mostrar_nombre: true } : {}),
@@ -450,7 +554,7 @@ const Store = (() => {
         }
 
         async function guardarOpinion(datosOpinion) {
-            exigirSesion();
+            exigirActivo();
             const { instalacionId, puntuacion, comentario } = validarOpinion(datosOpinion);
             comprobar(await client.from("opiniones").upsert({
                 instalacion_id: instalacionId, usuario_id: sesion.id, puntuacion, comentario,
@@ -462,15 +566,6 @@ const Store = (() => {
         function exigirAdmin() {
             exigirSesion();
             if (!sesion.admin) throw new Error("Solo un administrador puede hacer esto.");
-        }
-
-        async function adminListarUsuarios() {
-            exigirAdmin();
-            const filas = comprobar(await client.rpc("admin_listar_usuarios"));
-            return filas.map((u) => ({
-                id: u.id, nombre: u.nombre, email: u.email, creado: Date.parse(u.creado),
-                admin: u.es_admin, reservas: Number(u.reservas), subastas: Number(u.subastas), pujas: Number(u.pujas),
-            }));
         }
 
         async function adminCancelarSubasta(subastaId) {
@@ -486,6 +581,106 @@ const Store = (() => {
             await recargar("reservas");
         }
 
+        // Mensaje claro si falta la parte nueva de admin.sql
+        async function rpcAdmin(funcion, parametros) {
+            exigirAdmin();
+            const resultado = await client.rpc(funcion, parametros);
+            if (noExiste(resultado.error)) {
+                throw new Error("Falta actualizar el servidor: ejecuta supabase/admin.sql en el SQL Editor de Supabase.");
+            }
+            return comprobar(resultado);
+        }
+
+        async function adminListarUsuarios() {
+            const filas = await rpcAdmin("admin_listar_usuarios");
+            return filas.map((u) => ({
+                id: u.id, nombre: u.nombre, email: u.email, creado: Date.parse(u.creado),
+                admin: u.es_admin, reservas: Number(u.reservas), subastas: Number(u.subastas), pujas: Number(u.pujas),
+                bloqueado: Boolean(u.bloqueado), motivoBloqueo: u.motivo_bloqueo || "",
+                nombreRechazado: u.nombre_rechazado || "",
+            }));
+        }
+
+        async function adminBloquearUsuario(usuarioId, bloquear, motivo = "") {
+            await rpcAdmin("admin_bloquear_usuario", {
+                p_usuario: usuarioId, p_bloquear: Boolean(bloquear), p_motivo: String(motivo).slice(0, 200),
+            });
+        }
+
+        async function adminRenombrarUsuario(usuarioId, nombre) {
+            nombre = validarNombre(nombre, listaProhibidos);
+            await rpcAdmin("admin_renombrar_usuario", { p_usuario: usuarioId, p_nombre: nombre });
+            await recargar("perfiles");
+        }
+
+        async function adminBorrarPuja(pujaId) {
+            await rpcAdmin("admin_borrar_puja", { p_puja: Number(pujaId) });
+            await recargar("pujas", "subastas");
+        }
+
+        async function adminListarOpiniones() {
+            exigirAdmin();
+            let resultado = await client.from("opiniones")
+                .select("instalacion_id, usuario_id, puntuacion, comentario, creada, perfiles(nombre)");
+            if (resultado.error?.code === "42703") {
+                resultado = await client.from("opiniones")
+                    .select("instalacion_id, usuario_id, puntuacion, comentario, perfiles(nombre)");
+            }
+            if (noExiste(resultado.error)) return [];
+            return comprobar(resultado).map((o) => ({
+                instalacionId: o.instalacion_id, usuarioId: o.usuario_id, nombre: o.perfiles?.nombre,
+                puntuacion: o.puntuacion, comentario: o.comentario, creada: o.creada ? Date.parse(o.creada) : null,
+            }));
+        }
+
+        async function adminBorrarOpinion(instalacionId, usuarioId) {
+            exigirAdmin();
+            const filas = comprobar(await client.from("opiniones").delete()
+                .eq("instalacion_id", instalacionId).eq("usuario_id", usuarioId).select("usuario_id"));
+            if (!filas.length) throw new Error("No se ha podido borrar (¿has ejecutado supabase/admin.sql?).");
+        }
+
+        async function adminListarNombresProhibidos() {
+            exigirAdmin();
+            const resultado = await client.from("nombres_prohibidos").select("termino, modo").order("termino");
+            if (noExiste(resultado.error)) {
+                throw new Error("Falta actualizar el servidor: ejecuta supabase/admin.sql en el SQL Editor de Supabase.");
+            }
+            listaProhibidos = comprobar(resultado);
+            return listaProhibidos;
+        }
+
+        async function adminAnadirNombreProhibido(termino, modo) {
+            exigirAdmin();
+            const fila = validarTermino(termino, modo);
+            comprobar(await client.from("nombres_prohibidos").upsert(fila, { onConflict: "termino" }));
+            return adminListarNombresProhibidos();
+        }
+
+        async function adminQuitarNombreProhibido(termino) {
+            exigirAdmin();
+            comprobar(await client.from("nombres_prohibidos").delete().eq("termino", termino));
+            return adminListarNombresProhibidos();
+        }
+
+        async function adminLeerAjustesFacturacion() {
+            exigirAdmin();
+            const resultado = await client.from("ajustes").select("valor").eq("clave", "facturacion").maybeSingle();
+            if (resultado.error || !resultado.data) return { ...FACTURACION_DEFECTO };
+            return { ...FACTURACION_DEFECTO, ...resultado.data.valor };
+        }
+
+        async function adminGuardarAjustesFacturacion(ajustes) {
+            exigirAdmin();
+            const valor = validarAjustes(ajustes);
+            const resultado = await client.from("ajustes").upsert({ clave: "facturacion", valor }, { onConflict: "clave" });
+            if (noExiste(resultado.error)) {
+                throw new Error("Falta actualizar el servidor: ejecuta supabase/admin.sql en el SQL Editor de Supabase.");
+            }
+            comprobar(resultado);
+            return valor;
+        }
+
         return {
             inicializar, ahora, registrar, login, cerrarSesion, usuarioActual, getUsuario,
             listarSubastas, getSubasta, crearSubasta, pujar, cancelarSubasta,
@@ -494,7 +689,13 @@ const Store = (() => {
             todasLasReservas: () => datos.reservas,
             permiteMostrarNombre: () => nombresEnAgenda,
             listarOpiniones, guardarOpinion,
+            motivoNombre: (nombre) => motivoNombre(nombre, listaProhibidos),
+            textoProhibido: (texto) => textoConTerminoProhibido(texto, listaProhibidos),
             adminListarUsuarios, adminCancelarSubasta, adminBorrarReserva,
+            adminBloquearUsuario, adminRenombrarUsuario, adminBorrarPuja,
+            adminListarOpiniones, adminBorrarOpinion,
+            adminListarNombresProhibidos, adminAnadirNombreProhibido, adminQuitarNombreProhibido,
+            adminLeerAjustesFacturacion, adminGuardarAjustesFacturacion,
         };
     }
 
@@ -514,6 +715,8 @@ const Store = (() => {
             sesion: `cp_sesion:${CARPETA}`,
             reservas: `ceutaplay-padel-reservations:${CARPETA}`,
             opiniones: `cp_opiniones:${CARPETA}`,
+            prohibidos: `cp_nombres_prohibidos:${CARPETA}`,
+            ajustes: `cp_ajustes_facturacion:${CARPETA}`,
         };
 
         const ahora = () => Date.now();
@@ -554,16 +757,20 @@ const Store = (() => {
 
         function usuarioPublico(usuario) {
             if (!usuario) return null;
-            return { id: usuario.id, nombre: usuario.nombre, email: usuario.email, admin: Boolean(usuario.admin) };
+            return {
+                id: usuario.id, nombre: usuario.nombre, email: usuario.email,
+                admin: Boolean(usuario.admin), bloqueado: Boolean(usuario.bloqueado),
+            };
         }
 
         // ---------- cuentas ----------
 
         const getUsuarios = () => leer(KEYS.usuarios, []);
         const getUsuario = (id) => usuarioPublico(getUsuarios().find((u) => u.id === id));
+        const getProhibidos = () => leer(KEYS.prohibidos, NOMBRES_PROHIBIDOS_BASE);
 
         async function registrar(datosRegistro) {
-            const { nombre, email, password } = validarRegistro(datosRegistro);
+            const { nombre, email, password } = validarRegistro(datosRegistro, getProhibidos());
             const usuarios = getUsuarios();
             if (usuarios.some((u) => u.email === email)) {
                 throw new Error("Ya existe una cuenta con ese correo.");
@@ -603,6 +810,12 @@ const Store = (() => {
             return usuario;
         }
 
+        function exigirActivo() {
+            const usuario = exigirSesion();
+            if (usuario.bloqueado) throw new Error(CUENTA_SUSPENDIDA);
+            return usuario;
+        }
+
         // ---------- subastas ----------
 
         const getSubastasRaw = () => leer(KEYS.subastas, []);
@@ -614,7 +827,7 @@ const Store = (() => {
         }
 
         async function crearSubasta(datosSubasta) {
-            const usuario = exigirSesion();
+            const usuario = exigirActivo();
             const v = validarSubasta(datosSubasta);
             const fin = Date.now() + v.duracionMin * MINUTO;
             if (new Date(`${v.fecha}T${v.hora}`).getTime() <= fin) {
@@ -644,7 +857,7 @@ const Store = (() => {
         }
 
         async function pujar(subastaId, cantidad) {
-            const usuario = exigirSesion();
+            const usuario = exigirActivo();
             cantidad = Number(cantidad);
             const subastas = getSubastasRaw();
             const raw = subastas.find((s) => s.id === subastaId);
@@ -660,7 +873,7 @@ const Store = (() => {
                 throw new Error(`La puja mínima es de ${subasta.pujaMinima} €.`);
             }
 
-            raw.pujas.push({ usuarioId: usuario.id, cantidad, fecha: Date.now() });
+            raw.pujas.push({ id: nuevoId(), usuarioId: usuario.id, cantidad, fecha: Date.now() });
             guardar(KEYS.subastas, subastas);
             avisar("datos-cambiados");
             return getSubasta(subastaId);
@@ -691,12 +904,12 @@ const Store = (() => {
             r.facility === facility && r.court === court && r.date === date && r.time === time);
 
         async function reservar({ facility, court, date, time, mostrarNombre = false }) {
-            const usuario = exigirSesion();
+            const usuario = exigirActivo();
             if (pistaOcupada(facility, court, date, time)) {
                 throw new Error("Esa pista ya está reservada por otro usuario en ese turno.");
             }
             const reservas = todasLasReservas();
-            reservas.push({ id: nuevoId(), userId: usuario.id, facility, court, date, time, mostrarNombre });
+            reservas.push({ id: nuevoId(), userId: usuario.id, facility, court, date, time, mostrarNombre, creada: Date.now() });
             guardar(KEYS.reservas, reservas);
             avisar("datos-cambiados");
         }
@@ -714,11 +927,11 @@ const Store = (() => {
         }
 
         async function guardarOpinion(datosOpinion) {
-            const usuario = exigirSesion();
+            const usuario = exigirActivo();
             const opinion = validarOpinion(datosOpinion);
             const opiniones = leer(KEYS.opiniones, []).filter((o) =>
                 o.instalacionId !== opinion.instalacionId || o.usuarioId !== usuario.id);
-            opiniones.push({ ...opinion, usuarioId: usuario.id });
+            opiniones.push({ ...opinion, usuarioId: usuario.id, creada: Date.now() });
             guardar(KEYS.opiniones, opiniones);
         }
 
@@ -737,6 +950,7 @@ const Store = (() => {
                     sal,
                     hash: await hashPassword(demo.password, sal),
                     creado: Date.now(),
+                    admin: Boolean(demo.admin),
                 });
             }
             guardar(KEYS.usuarios, usuarios);
@@ -768,6 +982,7 @@ const Store = (() => {
                     fin: t + demo.terminaEnMin * MINUTO,
                     vendedorId: idPorEmail(demo.vendedor),
                     pujas: demo.pujas.map((p, i) => ({
+                        id: nuevoId(),
                         usuarioId: idPorEmail(p.email),
                         cantidad: p.cantidad,
                         fecha: t - (demo.pujas.length - i) * 5 * MINUTO,
@@ -777,10 +992,33 @@ const Store = (() => {
                 };
             });
             guardar(KEYS.subastas, subastas);
+
+            guardar(KEYS.reservas, RESERVAS_DEMO.map((demo) => {
+                const dia = new Date(t + demo.diasDesdeHoy * 24 * 60 * MINUTO);
+                return {
+                    id: nuevoId(), userId: idPorEmail(demo.email), facility: demo.instalacionId,
+                    court: demo.pista, date: fechaISO(dia), time: demo.hora, mostrarNombre: false,
+                    creada: dia.getTime() - 2 * 24 * 60 * MINUTO,
+                };
+            }));
+        }
+
+        // Navegadores con datos de antes de existir la cuenta de administrador de prueba
+        async function asegurarAdminDemo() {
+            const usuarios = getUsuarios();
+            const demo = USUARIOS_DEMO.find((u) => u.admin);
+            if (!demo || usuarios.some((u) => u.email === demo.email)) return;
+            const sal = nuevoId();
+            usuarios.push({
+                id: nuevoId(), nombre: demo.nombre, email: demo.email, sal,
+                hash: await hashPassword(demo.password, sal), creado: Date.now(), admin: true,
+            });
+            guardar(KEYS.usuarios, usuarios);
         }
 
         async function inicializar() {
             await crearDatosDemo();
+            await asegurarAdminDemo();
             // Cambios hechos en otra pestaña del mismo navegador
             window.addEventListener("storage", (event) => {
                 if (event.key === KEYS.sesion) avisar("sesion-cambiada");
@@ -813,6 +1051,8 @@ const Store = (() => {
             const reservas = todasLasReservas();
             return getUsuarios().map((u) => ({
                 id: u.id, nombre: u.nombre, email: u.email, creado: u.creado, admin: Boolean(u.admin),
+                bloqueado: Boolean(u.bloqueado), motivoBloqueo: u.motivoBloqueo || "",
+                nombreRechazado: u.nombreRechazado || "",
                 reservas: reservas.filter((r) => r.userId === u.id).length,
                 subastas: subastas.filter((s) => s.vendedorId === u.id).length,
                 pujas: subastas.reduce((n, s) => n + s.pujas.filter((p) => p.usuarioId === u.id).length, 0),
@@ -835,6 +1075,91 @@ const Store = (() => {
             avisar("datos-cambiados");
         }
 
+        function cambiarUsuario(usuarioId, cambios) {
+            const usuarios = getUsuarios();
+            const usuario = usuarios.find((u) => u.id === usuarioId);
+            if (!usuario) throw new Error("El usuario no existe.");
+            Object.assign(usuario, cambios);
+            guardar(KEYS.usuarios, usuarios);
+            avisar("datos-cambiados");
+        }
+
+        async function adminBloquearUsuario(usuarioId, bloquear, motivo = "") {
+            const admin = exigirAdmin();
+            if (usuarioId === admin.id) throw new Error("No puedes suspender tu propia cuenta.");
+            if (getUsuario(usuarioId)?.admin) throw new Error("No se puede suspender a otro administrador.");
+            cambiarUsuario(usuarioId, {
+                bloqueado: Boolean(bloquear),
+                motivoBloqueo: bloquear ? String(motivo).trim().slice(0, 200) : "",
+            });
+        }
+
+        async function adminRenombrarUsuario(usuarioId, nombre) {
+            exigirAdmin();
+            nombre = validarNombre(nombre, getProhibidos());
+            cambiarUsuario(usuarioId, { nombre, nombreRechazado: "" });
+        }
+
+        // En modo local las pujas antiguas no tienen id: se identifican por fecha y usuario
+        const idPuja = (p) => p.id || `${p.fecha}-${p.usuarioId}`;
+
+        async function adminBorrarPuja(pujaId) {
+            exigirAdmin();
+            const subastas = getSubastasRaw();
+            const subasta = subastas.find((s) => s.pujas.some((p) => idPuja(p) === pujaId));
+            if (!subasta) throw new Error("La puja no existe.");
+            if (enriquecer(subasta, ahora(), getUsuario).estado !== "activa") {
+                throw new Error("Solo se pueden anular pujas de subastas en curso.");
+            }
+            subasta.pujas = subasta.pujas.filter((p) => idPuja(p) !== pujaId);
+            guardar(KEYS.subastas, subastas);
+            avisar("datos-cambiados");
+        }
+
+        async function adminListarOpiniones() {
+            exigirAdmin();
+            return leer(KEYS.opiniones, []).map((o) => ({
+                ...o, nombre: getUsuario(o.usuarioId)?.nombre, creada: o.creada || null,
+            }));
+        }
+
+        async function adminBorrarOpinion(instalacionId, usuarioId) {
+            exigirAdmin();
+            guardar(KEYS.opiniones, leer(KEYS.opiniones, []).filter((o) =>
+                !(o.instalacionId === instalacionId && o.usuarioId === usuarioId)));
+            avisar("datos-cambiados");
+        }
+
+        async function adminListarNombresProhibidos() {
+            exigirAdmin();
+            return [...getProhibidos()].sort((a, b) => a.termino.localeCompare(b.termino));
+        }
+
+        async function adminAnadirNombreProhibido(termino, modo) {
+            exigirAdmin();
+            const fila = validarTermino(termino, modo);
+            guardar(KEYS.prohibidos, [...getProhibidos().filter((e) => e.termino !== fila.termino), fila]);
+            return adminListarNombresProhibidos();
+        }
+
+        async function adminQuitarNombreProhibido(termino) {
+            exigirAdmin();
+            guardar(KEYS.prohibidos, getProhibidos().filter((e) => e.termino !== termino));
+            return adminListarNombresProhibidos();
+        }
+
+        async function adminLeerAjustesFacturacion() {
+            exigirAdmin();
+            return { ...FACTURACION_DEFECTO, ...leer(KEYS.ajustes, {}) };
+        }
+
+        async function adminGuardarAjustesFacturacion(ajustes) {
+            exigirAdmin();
+            const valor = validarAjustes(ajustes);
+            guardar(KEYS.ajustes, valor);
+            return valor;
+        }
+
         return {
             inicializar, reiniciarDemo, ahora, registrar, login, cerrarSesion, usuarioActual, getUsuario,
             listarSubastas, getSubasta, crearSubasta, pujar, cancelarSubasta,
@@ -843,7 +1168,13 @@ const Store = (() => {
             todasLasReservas,
             permiteMostrarNombre: () => true,
             listarOpiniones, guardarOpinion,
+            motivoNombre: (nombre) => motivoNombre(nombre, getProhibidos()),
+            textoProhibido: (texto) => textoConTerminoProhibido(texto, getProhibidos()),
             adminListarUsuarios, adminCancelarSubasta, adminBorrarReserva,
+            adminBloquearUsuario, adminRenombrarUsuario, adminBorrarPuja,
+            adminListarOpiniones, adminBorrarOpinion,
+            adminListarNombresProhibidos, adminAnadirNombreProhibido, adminQuitarNombreProhibido,
+            adminLeerAjustesFacturacion, adminGuardarAjustesFacturacion,
         };
     }
 

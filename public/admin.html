@@ -24,7 +24,7 @@
     <main class="container admin-page">
         <header class="reservation-heading">
             <h1>Panel de administración</h1>
-            <p>Gestiona usuarios, subastas y reservas de CeutaPlay.</p>
+            <p>Facturación, subastas, reservas, usuarios y moderación de CeutaPlay.</p>
         </header>
 
         <p id="admin-cargando" role="status">Cargando…</p>
@@ -42,55 +42,225 @@
 
         <!-- Panel -->
         <div id="admin-panel" hidden>
-            <dl class="admin-stats" id="admin-stats"></dl>
+            <p id="admin-aviso-servidor" class="admin-notice" role="status" hidden></p>
 
             <div class="admin-tabs" role="tablist" aria-label="Secciones del panel">
-                <button type="button" class="auction-filter active" role="tab" data-tab="usuarios" aria-selected="true">Usuarios</button>
-                <button type="button" class="auction-filter" role="tab" data-tab="subastas" aria-selected="false">Subastas</button>
-                <button type="button" class="auction-filter" role="tab" data-tab="reservas" aria-selected="false">Reservas</button>
+                <button type="button" class="auction-filter active" role="tab" data-tab="resumen" aria-selected="true">📊 Resumen</button>
+                <button type="button" class="auction-filter" role="tab" data-tab="facturacion" aria-selected="false">💶 Facturación</button>
+                <button type="button" class="auction-filter" role="tab" data-tab="subastas" aria-selected="false">🔨 Subastas</button>
+                <button type="button" class="auction-filter" role="tab" data-tab="reservas" aria-selected="false">📅 Reservas</button>
+                <button type="button" class="auction-filter" role="tab" data-tab="usuarios" aria-selected="false">👥 Usuarios <span class="admin-count" id="cuenta-revisar" hidden></span></button>
+                <button type="button" class="auction-filter" role="tab" data-tab="interaccion" aria-selected="false">💬 Interacción</button>
+                <button type="button" class="auction-filter" role="tab" data-tab="nombres" aria-selected="false">🚫 Nombres prohibidos</button>
             </div>
 
-            <div class="admin-search">
+            <div class="admin-search" id="admin-search-box" hidden>
                 <label for="admin-buscar">Buscar</label>
                 <input type="search" id="admin-buscar" placeholder="Nombre, correo, instalación…">
             </div>
 
-            <section class="reservation-panel admin-section" data-seccion="usuarios" aria-label="Usuarios">
-                <div class="admin-table-wrap">
-                    <table class="admin-table">
-                        <thead>
-                            <tr><th>Nombre</th><th>Correo</th><th>Alta</th><th>Reservas</th><th>Subastas</th><th>Pujas</th><th>Rol</th></tr>
-                        </thead>
-                        <tbody id="admin-usuarios"></tbody>
-                    </table>
+            <!-- ============ RESUMEN ============ -->
+            <section class="admin-section" data-seccion="resumen" aria-label="Resumen">
+                <dl class="admin-stats" id="resumen-stats"></dl>
+                <div class="admin-grid">
+                    <div class="reservation-panel">
+                        <h2 class="admin-h2">Pendiente de revisar</h2>
+                        <ul class="admin-alertas" id="resumen-alertas"></ul>
+                    </div>
+                    <div class="reservation-panel">
+                        <h2 class="admin-h2">Actividad reciente</h2>
+                        <ol class="admin-feed" id="resumen-actividad"></ol>
+                    </div>
                 </div>
             </section>
 
-            <section class="reservation-panel admin-section" data-seccion="subastas" aria-label="Subastas" hidden>
-                <div class="admin-table-wrap">
+            <!-- ============ FACTURACIÓN ============ -->
+            <section class="admin-section" data-seccion="facturacion" aria-label="Facturación" hidden>
+                <div class="admin-toolbar">
+                    <label>Periodo
+                        <select id="fact-periodo"></select>
+                    </label>
+                    <button type="button" class="admin-btn" id="fact-exportar">⬇️ Exportar movimientos (CSV)</button>
+                </div>
+
+                <dl class="admin-stats" id="fact-stats"></dl>
+
+                <div class="admin-grid">
+                    <div class="reservation-panel">
+                        <h2 class="admin-h2">Ingresos de la plataforma por mes</h2>
+                        <p class="admin-hint">Comisiones de los últimos 6 meses (sin IPSI). Pasa el ratón por una barra para ver el detalle.</p>
+                        <div class="admin-chart" id="fact-grafico" role="img"></div>
+                    </div>
+
+                    <form class="reservation-panel admin-form" id="fact-ajustes">
+                        <h2 class="admin-h2">Comisiones e impuestos</h2>
+                        <div class="admin-form-row">
+                            <label>Comisión reservas (%)<input type="number" name="comisionReservas" min="0" max="100" step="0.5" required></label>
+                            <label>Comisión subastas (%)<input type="number" name="comisionSubastas" min="0" max="100" step="0.5" required></label>
+                            <label>IPSI sobre comisión (%)<input type="number" name="ipsi" min="0" max="100" step="0.5" required></label>
+                        </div>
+                        <fieldset class="admin-fieldset">
+                            <legend>Comisión bonificada (RSC: escuelas base, deporte femenino…)</legend>
+                            <ul class="admin-chips" id="fact-bonificadas"></ul>
+                            <div class="admin-form-row">
+                                <label>Instalación<select id="fact-bonif-instalacion"></select></label>
+                                <label>Comisión (%)<input type="number" id="fact-bonif-pct" min="0" max="100" step="0.5" value="5"></label>
+                                <button type="button" class="admin-btn" id="fact-bonif-anadir">Añadir</button>
+                            </div>
+                        </fieldset>
+                        <button type="submit" class="register-btn">Guardar ajustes</button>
+                        <p class="admin-hint">El IPSI es el impuesto indirecto de Ceuta. Confirmad el tipo aplicable con la asesoría.</p>
+                    </form>
+                </div>
+
+                <div class="reservation-panel">
+                    <h2 class="admin-h2">Liquidación por instalación</h2>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr><th>Instalación</th><th class="num">Reservas</th><th class="num">Subastas</th><th class="num">Volumen</th><th class="num">% com.</th><th class="num">Comisión</th><th class="num">IPSI</th><th class="num">A liquidar</th><th></th></tr>
+                            </thead>
+                            <tbody id="fact-instalaciones"></tbody>
+                            <tfoot id="fact-totales"></tfoot>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="reservation-panel">
+                    <h2 class="admin-h2">Movimientos</h2>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr><th>Fecha</th><th>Tipo</th><th>Instalación</th><th>Cliente</th><th class="num">Importe</th><th class="num">Comisión</th><th>Estado</th></tr>
+                            </thead>
+                            <tbody id="fact-movimientos"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ SUBASTAS ============ -->
+            <section class="admin-section" data-seccion="subastas" aria-label="Subastas" hidden>
+                <dl class="admin-stats" id="subastas-stats"></dl>
+                <div class="admin-filtros" id="subastas-filtros">
+                    <button type="button" class="auction-filter active" data-filtro="todas">Todas</button>
+                    <button type="button" class="auction-filter" data-filtro="activa">En curso</button>
+                    <button type="button" class="auction-filter" data-filtro="finalizada">Finalizadas</button>
+                    <button type="button" class="auction-filter" data-filtro="cancelada">Canceladas</button>
+                    <button type="button" class="auction-filter" data-filtro="sin-pujas">Sin pujas</button>
+                </div>
+                <div class="reservation-panel admin-table-wrap">
                     <table class="admin-table">
                         <thead>
-                            <tr><th>Instalación</th><th>Partido</th><th>Vendedor</th><th>Estado</th><th>Precio</th><th>Pujas</th><th></th></tr>
+                            <tr><th>Instalación</th><th>Partido</th><th>Vendedor</th><th>Estado</th><th class="num">Precio</th><th class="num">Pujas</th><th>Termina</th><th></th></tr>
                         </thead>
                         <tbody id="admin-subastas"></tbody>
                     </table>
                 </div>
             </section>
 
-            <section class="reservation-panel admin-section" data-seccion="reservas" aria-label="Reservas" hidden>
-                <label class="admin-check">
-                    <input type="checkbox" id="admin-solo-proximas" checked> Solo próximas
-                </label>
-                <div class="admin-table-wrap">
+            <!-- ============ RESERVAS ============ -->
+            <section class="admin-section" data-seccion="reservas" aria-label="Reservas" hidden>
+                <div class="reservation-panel">
+                    <label class="admin-check">
+                        <input type="checkbox" id="admin-solo-proximas" checked> Solo próximas
+                    </label>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr><th>Instalación</th><th>Pista</th><th>Fecha</th><th>Hora</th><th>Usuario</th><th class="num">Precio</th><th></th></tr>
+                            </thead>
+                            <tbody id="admin-reservas"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ USUARIOS ============ -->
+            <section class="admin-section" data-seccion="usuarios" aria-label="Usuarios" hidden>
+                <div class="admin-filtros" id="usuarios-filtros">
+                    <button type="button" class="auction-filter active" data-filtro="todos">Todos</button>
+                    <button type="button" class="auction-filter" data-filtro="revisar">⚠️ Nombre a revisar</button>
+                    <button type="button" class="auction-filter" data-filtro="suspendidos">Suspendidos</button>
+                    <button type="button" class="auction-filter" data-filtro="admins">Administradores</button>
+                </div>
+                <div class="reservation-panel admin-table-wrap">
                     <table class="admin-table">
                         <thead>
-                            <tr><th>Instalación</th><th>Pista</th><th>Fecha</th><th>Hora</th><th>Usuario</th><th></th></tr>
+                            <tr><th>Nombre</th><th>Correo</th><th>Alta</th><th class="num">Reservas</th><th class="num">Subastas</th><th class="num">Pujas</th><th>Estado</th><th></th></tr>
                         </thead>
-                        <tbody id="admin-reservas"></tbody>
+                        <tbody id="admin-usuarios"></tbody>
                     </table>
                 </div>
             </section>
+
+            <!-- ============ INTERACCIÓN ============ -->
+            <section class="admin-section" data-seccion="interaccion" aria-label="Interacción" hidden>
+                <dl class="admin-stats" id="interaccion-stats"></dl>
+                <div class="reservation-panel">
+                    <h2 class="admin-h2">Opiniones</h2>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead>
+                                <tr><th>Instalación</th><th>Usuario</th><th>Nota</th><th>Comentario</th><th>Fecha</th><th></th></tr>
+                            </thead>
+                            <tbody id="admin-opiniones"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="reservation-panel">
+                    <h2 class="admin-h2">Toda la actividad</h2>
+                    <ol class="admin-feed" id="interaccion-actividad"></ol>
+                </div>
+            </section>
+
+            <!-- ============ NOMBRES PROHIBIDOS ============ -->
+            <section class="admin-section" data-seccion="nombres" aria-label="Nombres prohibidos" hidden>
+                <div class="admin-grid">
+                    <form class="reservation-panel admin-form" id="nombres-form">
+                        <h2 class="admin-h2">Añadir término</h2>
+                        <p class="admin-hint">
+                            Se comprueba sin tildes, sin mayúsculas y deshaciendo trucos como
+                            <code>1d10t4</code>, <code>i.d.i.o.t.a</code> o <code>iiidiota</code>.
+                        </p>
+                        <div class="admin-form-row">
+                            <label>Término<input name="termino" maxlength="40" required placeholder="p. ej. tonto"></label>
+                            <label>Coincidencia
+                                <select name="modo">
+                                    <option value="contiene">En cualquier parte</option>
+                                    <option value="palabra">Solo palabra completa</option>
+                                </select>
+                            </label>
+                            <button type="submit" class="register-btn">Añadir</button>
+                        </div>
+                        <p class="admin-hint">Usa «solo palabra completa» para términos cortos que aparecen dentro de nombres reales (p. ej. «zorra» en «Zorrilla»).</p>
+                    </form>
+
+                    <div class="reservation-panel admin-form">
+                        <h2 class="admin-h2">Probar un nombre</h2>
+                        <label>Nombre<input id="nombres-probar" maxlength="60" placeholder="Escribe un nombre de usuario"></label>
+                        <p id="nombres-resultado" class="admin-test" role="status"></p>
+                    </div>
+                </div>
+
+                <div class="reservation-panel">
+                    <h2 class="admin-h2">Usuarios actuales con nombre no permitido</h2>
+                    <ul class="admin-alertas" id="nombres-infractores"></ul>
+                </div>
+
+                <div class="reservation-panel">
+                    <h2 class="admin-h2">Lista de términos (<span id="nombres-total">0</span>)</h2>
+                    <ul class="admin-chips" id="nombres-lista"></ul>
+                </div>
+            </section>
         </div>
+
+        <!-- Liquidación imprimible de una instalación -->
+        <dialog class="modal admin-liquidacion" id="liquidacion">
+            <button type="button" class="modal-close" aria-label="Cerrar">×</button>
+            <div id="liquidacion-contenido"></div>
+            <p class="admin-noprint"><button type="button" class="register-btn" id="liquidacion-imprimir">🖨️ Imprimir / Guardar PDF</button></p>
+        </dialog>
     </main>
 </body>
 </html>

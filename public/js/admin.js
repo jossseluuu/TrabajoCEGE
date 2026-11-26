@@ -1,116 +1,642 @@
 // Panel de administración (admin.html). Solo para cuentas con es_admin = true
 // (ver supabase/admin.sql). Las comprobaciones de verdad las hace el servidor:
-// aunque alguien abra esta página, sin permisos no puede borrar nada.
+// aunque alguien abra esta página, sin permisos no puede cambiar nada.
+//
+// Secciones:
+//   Resumen        → cifras clave, avisos pendientes y actividad reciente
+//   Facturación    → comisiones de la plataforma, IPSI y liquidación a cada
+//                    instalación (modelo de negocio: comisión por transacción)
+//   Subastas       → seguimiento, anular pujas y cancelar subastas
+//   Reservas       → reservas de pistas
+//   Usuarios       → suspender, reactivar y renombrar cuentas
+//   Interacción    → opiniones (moderación) y toda la actividad
+//   Nombres        → lista de nombres de usuario no permitidos
 
 const esc = (t) => UI.escapeHTML(t);
 const $ = (id) => document.getElementById(id);
 
-let usuarios = [];
-let pestana = "usuarios";
+const DIA = 24 * 60 * 60 * 1000;
+const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
+const estado = {
+    pestana: "resumen",
+    usuarios: [],
+    opiniones: [],
+    prohibidos: [],
+    ajustes: { ...FACTURACION_DEFECTO },
+    filtroSubastas: "todas",
+    filtroUsuarios: "todos",
+    abiertas: new Set(), // subastas con el detalle de pujas desplegado
+    avisoServidor: "",
+};
+
+// ---------- utilidades ----------
+
+const euros = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
+const dinero = (n) => euros.format(n || 0);
+const redondear = (n) => Math.round(n * 100) / 100;
 const formatoFecha = (ms) => (ms ? new Date(ms).toLocaleDateString("es-ES") : "—");
 const formatoDia = (iso) => iso.split("-").reverse().join("/");
-const nombreInstalacion = (id) => (INSTALACIONES.find((i) => i.id === Number(id)) || {}).nombre || `Instalación ${id}`;
+const instalacion = (id) => INSTALACIONES.find((i) => i.id === Number(id)) || null;
+const nombreInstalacion = (id) => instalacion(id)?.nombre || `Instalación ${id}`;
+const nombreUsuario = (id) => Store.getUsuario(id)?.nombre || estado.usuarios.find((u) => u.id === id)?.nombre || "—";
+const ahoraCeuta = () => ceutaDateTime();
+
+function haceCuanto(ms) {
+    const min = Math.round((Store.ahora() - ms) / 60000);
+    if (min < 1) return "ahora";
+    if (min < 60) return `hace ${min} min`;
+    const h = Math.round(min / 60);
+    if (h < 24) return `hace ${h} h`;
+    const d = Math.round(h / 24);
+    return d < 30 ? `hace ${d} d` : formatoFecha(ms);
+}
+
+function quedan(ms) {
+    if (ms <= 0) return "—";
+    const min = Math.ceil(ms / 60000);
+    if (min < 60) return `${min} min`;
+    const h = Math.floor(min / 60);
+    return h < 48 ? `${h} h ${min % 60} min` : `${Math.floor(h / 24)} d`;
+}
 
 function coincide(...textos) {
     const q = $("admin-buscar").value.trim().toLowerCase();
     return !q || textos.some((t) => String(t ?? "").toLowerCase().includes(q));
 }
 
-function filaVacia(columnas, texto) {
-    return `<tr><td colspan="${columnas}" class="admin-empty">${texto}</td></tr>`;
+const filaVacia = (columnas, texto) => `<tr><td colspan="${columnas}" class="admin-empty">${texto}</td></tr>`;
+const stat = (titulo, valor, nota = "") =>
+    `<div><dt>${titulo}</dt><dd>${valor}</dd>${nota ? `<p class="admin-stat-note">${nota}</p>` : ""}</div>`;
+const boton = (accion, texto, datos = {}, clase = "admin-action") =>
+    `<button type="button" class="${clase}" data-accion="${accion}" ${Object.entries(datos)
+        .map(([k, v]) => `data-${k}="${esc(v)}"`).join(" ")}>${texto}</button>`;
+
+// ¿Hay algo que revisar en este usuario?
+function motivoRevision(u) {
+    if (u.nombreRechazado) return `Intentó registrarse como «${u.nombreRechazado}»`;
+    if (u.admin) return null; // los nombres de los administradores los pone el equipo
+    return Store.motivoNombre(u.nombre);
 }
 
-function pintarResumen() {
-    const subastas = Store.listarSubastas();
-    const ahora = ceutaDateTime();
-    const reservas = Store.todasLasReservas();
-    const proximas = reservas.filter((r) => `${r.date}T${r.time}` > ahora);
-    $("admin-stats").innerHTML = `
-        <div><dt>Usuarios</dt><dd>${usuarios.length}</dd></div>
-        <div><dt>Subastas en curso</dt><dd>${subastas.filter((s) => s.estado === "activa").length}</dd></div>
-        <div><dt>Pujas totales</dt><dd>${subastas.reduce((n, s) => n + s.pujas.length, 0)}</dd></div>
-        <div><dt>Reservas próximas</dt><dd>${proximas.length}</dd></div>`;
+
+// =====================================================================
+// FACTURACIÓN
+// =====================================================================
+
+function comisionDe(instalacionId, tipo) {
+    const bonificada = estado.ajustes.bonificadas?.[instalacionId];
+    if (bonificada !== undefined) return Number(bonificada);
+    return tipo === "Subasta" ? estado.ajustes.comisionSubastas : estado.ajustes.comisionReservas;
 }
 
-function pintarUsuarios() {
-    const filas = usuarios.filter((u) => coincide(u.nombre, u.email)).map((u) => `
+// Todas las transacciones que generan ingresos: reservas directas (precio de
+// la instalación) y subastas adjudicadas (precio final de la puja ganadora)
+function movimientos() {
+    const ahora = ahoraCeuta();
+    const lista = [];
+    for (const r of Store.todasLasReservas()) {
+        const inst = instalacion(r.facility);
+        if (!inst) continue;
+        lista.push({
+            fecha: r.date, hora: r.time, tipo: "Reserva", instalacionId: inst.id,
+            cliente: nombreUsuario(r.userId), importe: inst.precioPrueba || 0,
+            jugada: `${r.date}T${r.time}` <= ahora,
+        });
+    }
+    for (const s of Store.listarSubastas()) {
+        if (s.estado !== "finalizada" || !s.ganador) continue;
+        lista.push({
+            fecha: s.fecha, hora: s.hora, tipo: "Subasta", instalacionId: Number(s.instalacionId),
+            cliente: s.ganador.nombre, importe: s.precioActual,
+            jugada: `${s.fecha}T${s.hora}` <= ahora,
+        });
+    }
+    return lista.map((m) => {
+        const pct = comisionDe(m.instalacionId, m.tipo);
+        const comision = redondear(m.importe * pct / 100);
+        const ipsi = redondear(comision * estado.ajustes.ipsi / 100);
+        return { ...m, pct, comision, ipsi, liquidar: redondear(m.importe - comision - ipsi) };
+    }).sort((a, b) => `${b.fecha}T${b.hora}`.localeCompare(`${a.fecha}T${a.hora}`));
+}
+
+const periodoActual = () => $("fact-periodo").value;
+const enPeriodo = (m, periodo = periodoActual()) => !periodo || m.fecha.startsWith(periodo);
+
+function nombrePeriodo(periodo) {
+    if (!periodo) return "Todo el histórico";
+    const [y, m] = periodo.split("-");
+    return `${MESES[Number(m) - 1]} ${y}`;
+}
+
+function pintarSelectorPeriodo() {
+    const select = $("fact-periodo");
+    const hoy = ahoraCeuta().slice(0, 7);
+    const elegido = select.options.length ? select.value : hoy; // la primera vez, el mes actual
+    const meses = new Set([hoy, ...movimientos().map((m) => m.fecha.slice(0, 7))]);
+    select.innerHTML = `<option value="">Todo el histórico</option>` +
+        [...meses].sort().reverse().map((p) => `<option value="${p}">${nombrePeriodo(p)}</option>`).join("");
+    select.value = select.querySelector(`option[value="${elegido}"]`) ? elegido : hoy;
+}
+
+const sumar = (lista, campo) => redondear(lista.reduce((n, m) => n + m[campo], 0));
+
+function porInstalacion(lista) {
+    const grupos = new Map();
+    for (const m of lista) {
+        if (!grupos.has(m.instalacionId)) grupos.set(m.instalacionId, []);
+        grupos.get(m.instalacionId).push(m);
+    }
+    return [...grupos.entries()].map(([id, ms]) => ({
+        id, nombre: nombreInstalacion(id), movimientos: ms,
+        reservas: ms.filter((m) => m.tipo === "Reserva").length,
+        subastas: ms.filter((m) => m.tipo === "Subasta").length,
+        importe: sumar(ms, "importe"), comision: sumar(ms, "comision"),
+        ipsi: sumar(ms, "ipsi"), liquidar: sumar(ms, "liquidar"),
+        pct: [...new Set([comisionDe(id, "Reserva"), comisionDe(id, "Subasta")])].join(" / "),
+    })).sort((a, b) => b.importe - a.importe);
+}
+
+function pintarGrafico(todos) {
+    const hoy = ahoraCeuta().slice(0, 7);
+    let [y, m] = hoy.split("-").map(Number);
+    const meses = [];
+    for (let i = 0; i < 6; i++) {
+        meses.unshift(`${y}-${String(m).padStart(2, "0")}`);
+        if (--m === 0) { m = 12; y--; }
+    }
+    const datos = meses.map((p) => {
+        const ms = todos.filter((mv) => enPeriodo(mv, p));
+        return { p, comision: sumar(ms, "comision"), n: ms.length };
+    });
+    const maximo = Math.max(...datos.map((d) => d.comision), 1);
+    $("fact-grafico").setAttribute("aria-label",
+        "Ingresos por comisiones: " + datos.map((d) => `${nombrePeriodo(d.p)} ${dinero(d.comision)}`).join(", "));
+    $("fact-grafico").innerHTML = datos.map((d) => `
+        <div class="admin-bar ${d.p === periodoActual() ? "is-selected" : ""}" tabindex="0">
+            <span class="admin-bar-value">${d.comision ? dinero(d.comision) : ""}</span>
+            <span class="admin-bar-fill" style="height:${Math.max(2, (d.comision / maximo) * 100)}%"></span>
+            <span class="admin-bar-label">${nombrePeriodo(d.p).split(" ")[0]}</span>
+            <span class="admin-bar-tip" role="tooltip">
+                <strong>${nombrePeriodo(d.p)}</strong><br>
+                Comisiones: ${dinero(d.comision)}<br>${d.n} transacciones
+            </span>
+        </div>`).join("");
+}
+
+function pintarFacturacion() {
+    pintarSelectorPeriodo();
+    const todos = movimientos();
+    const lista = todos.filter((m) => enPeriodo(m));
+    const importe = sumar(lista, "importe");
+    const comision = sumar(lista, "comision");
+
+    $("fact-stats").innerHTML =
+        stat("Volumen gestionado", dinero(importe), nombrePeriodo(periodoActual())) +
+        stat("Ingresos (comisiones)", dinero(comision), importe ? `${(comision / importe * 100).toLocaleString("es-ES", { maximumFractionDigits: 1 })} % del volumen` : "") +
+        stat("IPSI repercutido", dinero(sumar(lista, "ipsi")), `${estado.ajustes.ipsi} % sobre la comisión`) +
+        stat("A liquidar a instalaciones", dinero(sumar(lista, "liquidar"))) +
+        stat("Transacciones", lista.length,
+            `${lista.filter((m) => m.tipo === "Reserva").length} reservas · ${lista.filter((m) => m.tipo === "Subasta").length} subastas`) +
+        stat("Ticket medio", dinero(lista.length ? importe / lista.length : 0));
+
+    pintarGrafico(todos);
+
+    const grupos = porInstalacion(lista);
+    $("fact-instalaciones").innerHTML = grupos.map((g) => `
         <tr>
-            <td>${esc(u.nombre)}</td>
-            <td>${esc(u.email)}</td>
-            <td>${formatoFecha(u.creado)}</td>
-            <td>${u.reservas}</td>
-            <td>${u.subastas}</td>
-            <td>${u.pujas}</td>
-            <td>${u.admin ? `<span class="admin-badge">ADMIN</span>` : "Usuario"}</td>
-        </tr>`);
-    $("admin-usuarios").innerHTML = filas.join("") || filaVacia(7, "No hay usuarios que coincidan.");
+            <td>${esc(g.nombre)}${estado.ajustes.bonificadas?.[g.id] !== undefined ? ` <span class="admin-tag">bonificada</span>` : ""}</td>
+            <td class="num">${g.reservas}</td>
+            <td class="num">${g.subastas}</td>
+            <td class="num">${dinero(g.importe)}</td>
+            <td class="num">${g.pct} %</td>
+            <td class="num">${dinero(g.comision)}</td>
+            <td class="num">${dinero(g.ipsi)}</td>
+            <td class="num"><strong>${dinero(g.liquidar)}</strong></td>
+            <td>${boton("liquidacion", "📄 Liquidación", { id: g.id }, "admin-action admin-action-neutral")}</td>
+        </tr>`).join("") || filaVacia(9, "No hay transacciones en este periodo.");
+    $("fact-totales").innerHTML = grupos.length ? `
+        <tr>
+            <th>Total</th>
+            <td class="num">${grupos.reduce((n, g) => n + g.reservas, 0)}</td>
+            <td class="num">${grupos.reduce((n, g) => n + g.subastas, 0)}</td>
+            <td class="num">${dinero(importe)}</td><td></td>
+            <td class="num">${dinero(comision)}</td>
+            <td class="num">${dinero(sumar(lista, "ipsi"))}</td>
+            <td class="num"><strong>${dinero(sumar(lista, "liquidar"))}</strong></td><td></td>
+        </tr>` : "";
+
+    $("fact-movimientos").innerHTML = lista.slice(0, 200).map((m) => `
+        <tr>
+            <td>${formatoDia(m.fecha)} ${esc(m.hora)}</td>
+            <td><span class="admin-tag tag-${m.tipo.toLowerCase()}">${m.tipo}</span></td>
+            <td>${esc(nombreInstalacion(m.instalacionId))}</td>
+            <td>${esc(m.cliente)}</td>
+            <td class="num">${dinero(m.importe)}</td>
+            <td class="num">${dinero(m.comision)} <small>(${m.pct} %)</small></td>
+            <td>${m.jugada ? "Jugada" : "Próxima"}</td>
+        </tr>`).join("") || filaVacia(7, "No hay movimientos en este periodo.");
+
+    pintarAjustes();
 }
+
+function pintarAjustes() {
+    const form = $("fact-ajustes");
+    if (form.contains(document.activeElement)) return; // no pisar lo que se está escribiendo
+    form.comisionReservas.value = estado.ajustes.comisionReservas;
+    form.comisionSubastas.value = estado.ajustes.comisionSubastas;
+    form.ipsi.value = estado.ajustes.ipsi;
+    pintarBonificadas();
+}
+
+function pintarBonificadas() {
+    const bonificadas = estado.ajustes.bonificadas || {};
+    $("fact-bonificadas").innerHTML = Object.entries(bonificadas).map(([id, pct]) => `
+        <li class="admin-chip">${esc(nombreInstalacion(id))}: <strong>${pct} %</strong>
+            <button type="button" data-accion="quitar-bonificada" data-id="${esc(id)}" aria-label="Quitar">×</button></li>`).join("")
+        || `<li class="admin-hint">Ninguna instalación con comisión bonificada.</li>`;
+    $("fact-bonif-instalacion").innerHTML = INSTALACIONES
+        .filter((i) => bonificadas[i.id] === undefined)
+        .map((i) => `<option value="${i.id}">${esc(i.nombre)}</option>`).join("");
+}
+
+function exportarCSV() {
+    const lista = movimientos().filter((m) => enPeriodo(m));
+    const cabecera = ["Fecha", "Hora", "Tipo", "Instalación", "Cliente", "Importe", "% comisión", "Comisión", "IPSI", "A liquidar", "Estado"];
+    const celda = (v) => `"${String(v).replace(/"/g, '""')}"`;
+    const numero = (n) => String(n.toFixed(2)).replace(".", ",");
+    const filas = lista.map((m) => [m.fecha, m.hora, m.tipo, nombreInstalacion(m.instalacionId), m.cliente,
+        numero(m.importe), m.pct, numero(m.comision), numero(m.ipsi), numero(m.liquidar), m.jugada ? "Jugada" : "Próxima"]);
+    // ; y BOM para que Excel en español lo abra bien
+    const csv = "﻿" + [cabecera, ...filas].map((f) => f.map(celda).join(";")).join("\r\n");
+    const enlace = document.createElement("a");
+    enlace.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    enlace.download = `ceutaplay-movimientos-${periodoActual() || "historico"}.csv`;
+    enlace.click();
+    URL.revokeObjectURL(enlace.href);
+}
+
+function mostrarLiquidacion(instalacionId) {
+    const periodo = periodoActual();
+    const grupo = porInstalacion(movimientos().filter((m) => enPeriodo(m)))
+        .find((g) => g.id === Number(instalacionId));
+    if (!grupo) return;
+    const inst = instalacion(instalacionId);
+    const numero = `CP-${(periodo || "TOTAL").replace("-", "")}-${String(instalacionId).padStart(3, "0")}`;
+    $("liquidacion-contenido").innerHTML = `
+        <header class="liq-cabecera">
+            <div><p class="logo">CEUTA<span>PLAY</span></p><p>Liquidación de comisiones</p></div>
+            <dl><dt>Nº</dt><dd>${numero}</dd><dt>Periodo</dt><dd>${nombrePeriodo(periodo)}</dd>
+                <dt>Emitida</dt><dd>${new Date(Store.ahora()).toLocaleDateString("es-ES")}</dd></dl>
+        </header>
+        <p><strong>${esc(inst.nombre)}</strong><br>${esc(inst.ubicacion || "")}</p>
+        <table class="admin-table">
+            <thead><tr><th>Fecha</th><th>Concepto</th><th class="num">Importe</th><th class="num">Comisión</th></tr></thead>
+            <tbody>${grupo.movimientos.map((m) => `
+                <tr><td>${formatoDia(m.fecha)}</td><td>${m.tipo} · ${esc(m.cliente)}</td>
+                    <td class="num">${dinero(m.importe)}</td><td class="num">${dinero(m.comision)}</td></tr>`).join("")}
+            </tbody>
+        </table>
+        <dl class="liq-totales">
+            <dt>Volumen cobrado a clientes</dt><dd>${dinero(grupo.importe)}</dd>
+            <dt>Comisión CeutaPlay</dt><dd>− ${dinero(grupo.comision)}</dd>
+            <dt>IPSI sobre la comisión (${estado.ajustes.ipsi} %)</dt><dd>− ${dinero(grupo.ipsi)}</dd>
+            <dt class="liq-total">Importe a transferir a la instalación</dt><dd class="liq-total">${dinero(grupo.liquidar)}</dd>
+        </dl>
+        <p class="admin-hint">Documento interno de liquidación. La factura de la comisión se emite aparte según la normativa del IPSI de Ceuta.</p>`;
+    $("liquidacion").showModal();
+}
+
+
+// =====================================================================
+// SUBASTAS
+// =====================================================================
 
 function pintarSubastas() {
+    const subastas = Store.listarSubastas();
+    const finalizadas = subastas.filter((s) => s.estado === "finalizada");
+    const adjudicadas = finalizadas.filter((s) => s.ganador);
+    const enCurso = subastas.filter((s) => s.estado === "activa");
+    const solidarias = finalizadas.filter((s) => !s.pujas.length);
+    $("subastas-stats").innerHTML =
+        stat("En curso", enCurso.length, `${enCurso.filter((s) => !s.pujas.length).length} todavía sin pujas`) +
+        stat("Adjudicadas", adjudicadas.length) +
+        stat("Tasa de éxito", finalizadas.length ? `${Math.round(adjudicadas.length / finalizadas.length * 100)} %` : "—",
+            "subastas finalizadas con ganador") +
+        stat("Precio medio final", dinero(adjudicadas.length ? sumar(adjudicadas, "precioActual") / adjudicadas.length : 0)) +
+        stat("Candidatas a pista solidaria", solidarias.length, "finalizadas sin pujas (RSC)");
+
     const orden = { activa: 0, finalizada: 1, cancelada: 2 };
-    const filas = Store.listarSubastas()
-        .filter((s) => coincide(s.titulo, s.deporte, s.vendedor && s.vendedor.nombre))
-        .sort((a, b) => orden[a.estado] - orden[b.estado] || b.fin - a.fin)
-        .map((s) => `
-        <tr>
-            <td>${esc(s.titulo)}</td>
-            <td>${formatoDia(s.fecha)} ${esc(s.hora)}</td>
-            <td>${esc(s.vendedor ? s.vendedor.nombre : "—")}</td>
-            <td><span class="admin-estado estado-${s.estado}">${s.estado}</span></td>
-            <td>${s.precioActual} €</td>
-            <td>${s.pujas.length}</td>
-            <td>${s.estado === "activa"
-                ? `<button type="button" class="admin-action" data-accion="cancelar-subasta" data-id="${esc(s.id)}">Cancelar</button>`
-                : ""}</td>
-        </tr>`);
-    $("admin-subastas").innerHTML = filas.join("") || filaVacia(7, "No hay subastas que coincidan.");
+    const filtro = estado.filtroSubastas;
+    const filas = subastas
+        .filter((s) => filtro === "todas" || (filtro === "sin-pujas" ? !s.pujas.length && s.estado !== "cancelada" : s.estado === filtro))
+        .filter((s) => coincide(s.titulo, s.deporte, s.vendedor?.nombre))
+        .sort((a, b) => orden[a.estado] - orden[b.estado] || a.fin - b.fin)
+        .map((s) => {
+            const abierta = estado.abiertas.has(s.id);
+            const detalle = abierta ? `
+                <tr class="admin-detalle"><td colspan="8">
+                    ${s.descripcion ? `<p>“${esc(s.descripcion)}”</p>` : ""}
+                    ${s.pujas.length ? `<ol class="admin-pujas">${s.pujas.map((p, i) => `
+                        <li>${i === 0 ? "🏆 " : ""}<strong>${p.cantidad} €</strong> · ${esc(nombreUsuario(p.usuarioId))}
+                            · ${haceCuanto(p.fecha)}
+                            ${s.estado === "activa" ? boton("borrar-puja", "Anular", { id: p.id }) : ""}</li>`).join("")}</ol>`
+                        : `<p class="admin-hint">Sin pujas${s.estado === "finalizada" ? " · se podría ceder como pista solidaria." : "."}</p>`}
+                </td></tr>` : "";
+            return `
+            <tr>
+                <td>${esc(s.titulo)}</td>
+                <td>${formatoDia(s.fecha)} ${esc(s.hora)}</td>
+                <td>${esc(s.vendedor ? s.vendedor.nombre : "—")}</td>
+                <td><span class="admin-estado estado-${s.estado}">${s.estado}</span></td>
+                <td class="num">${s.precioActual} €</td>
+                <td class="num">${s.pujas.length}</td>
+                <td>${s.estado === "activa" ? quedan(s.restanteMs) : formatoFecha(s.fin)}</td>
+                <td><div class="admin-acciones">
+                    ${boton("ver-pujas", abierta ? "Ocultar" : "Ver pujas", { id: s.id }, "admin-action admin-action-neutral")}
+                    ${s.estado === "activa" ? boton("cancelar-subasta", "Cancelar", { id: s.id }) : ""}
+                </div></td>
+            </tr>${detalle}`;
+        });
+    $("admin-subastas").innerHTML = filas.join("") || filaVacia(8, "No hay subastas que coincidan.");
 }
 
+
+// =====================================================================
+// RESERVAS
+// =====================================================================
+
 function pintarReservas() {
-    const ahora = ceutaDateTime();
+    const ahora = ahoraCeuta();
     const soloProximas = $("admin-solo-proximas").checked;
     const filas = Store.todasLasReservas()
         .filter((r) => !soloProximas || `${r.date}T${r.time}` > ahora)
-        .map((r) => ({ ...r, usuario: Store.getUsuario(r.userId), instalacion: nombreInstalacion(r.facility) }))
-        .filter((r) => coincide(r.instalacion, r.court, r.usuario && r.usuario.nombre))
+        .map((r) => ({ ...r, usuario: nombreUsuario(r.userId), inst: instalacion(r.facility) }))
+        .filter((r) => coincide(r.inst?.nombre, r.court, r.usuario))
         .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`))
         .map((r) => `
         <tr>
-            <td>${esc(r.instalacion)}</td>
+            <td>${esc(r.inst?.nombre || nombreInstalacion(r.facility))}</td>
             <td>${esc(r.court)}</td>
             <td>${formatoDia(r.date)}</td>
             <td>${esc(r.time)}</td>
-            <td>${esc(r.usuario ? r.usuario.nombre : "—")}</td>
-            <td><button type="button" class="admin-action" data-accion="borrar-reserva" data-id="${esc(r.id)}">Borrar</button></td>
+            <td>${esc(r.usuario)}</td>
+            <td class="num">${dinero(r.inst?.precioPrueba)}</td>
+            <td>${boton("borrar-reserva", "Borrar", { id: r.id })}</td>
         </tr>`);
-    $("admin-reservas").innerHTML = filas.join("") || filaVacia(6, "No hay reservas que coincidan.");
+    $("admin-reservas").innerHTML = filas.join("") || filaVacia(7, "No hay reservas que coincidan.");
 }
+
+
+// =====================================================================
+// USUARIOS
+// =====================================================================
+
+function pintarUsuarios() {
+    const yo = Store.usuarioActual();
+    const revisar = estado.usuarios.filter(motivoRevision);
+    $("cuenta-revisar").textContent = revisar.length;
+    $("cuenta-revisar").hidden = !revisar.length;
+
+    const filtros = {
+        todos: () => true,
+        revisar: (u) => motivoRevision(u),
+        suspendidos: (u) => u.bloqueado,
+        admins: (u) => u.admin,
+    };
+    const filas = estado.usuarios
+        .filter(filtros[estado.filtroUsuarios])
+        .filter((u) => coincide(u.nombre, u.email, u.nombreRechazado))
+        .map((u) => {
+            const motivo = motivoRevision(u);
+            const estadoCuenta = u.admin ? `<span class="admin-badge">ADMIN</span>`
+                : u.bloqueado ? `<span class="admin-estado estado-cancelada" title="${esc(u.motivoBloqueo)}">Suspendido</span>`
+                : `<span class="admin-estado estado-finalizada">Activo</span>`;
+            return `
+            <tr>
+                <td>${esc(u.nombre)}${motivo ? ` <span class="admin-warn" title="${esc(motivo)}">⚠️ ${esc(motivo)}</span>` : ""}</td>
+                <td>${esc(u.email)}</td>
+                <td>${formatoFecha(u.creado)}</td>
+                <td class="num">${u.reservas}</td>
+                <td class="num">${u.subastas}</td>
+                <td class="num">${u.pujas}</td>
+                <td>${estadoCuenta}${u.bloqueado && u.motivoBloqueo ? `<br><small>${esc(u.motivoBloqueo)}</small>` : ""}</td>
+                <td><div class="admin-acciones">
+                    ${boton("renombrar", "Renombrar", { id: u.id }, "admin-action admin-action-neutral")}
+                    ${u.admin || u.id === yo.id ? ""
+                        : u.bloqueado ? boton("reactivar", "Reactivar", { id: u.id }, "admin-action admin-action-ok")
+                        : boton("suspender", "Suspender", { id: u.id })}
+                </div></td>
+            </tr>`;
+        });
+    $("admin-usuarios").innerHTML = filas.join("") || filaVacia(8, "No hay usuarios que coincidan.");
+}
+
+
+// =====================================================================
+// INTERACCIÓN
+// =====================================================================
+
+// Eventos de la plataforma para el registro de actividad
+function actividad() {
+    const eventos = [];
+    for (const u of estado.usuarios) {
+        if (u.creado) eventos.push({ t: u.creado, icono: "👤", texto: `<strong>${esc(u.nombre)}</strong> se ha registrado` });
+    }
+    for (const s of Store.listarSubastas()) {
+        if (s.creada) eventos.push({ t: s.creada, icono: "🔨", texto: `<strong>${esc(s.vendedor?.nombre || "—")}</strong> subasta ${esc(s.titulo)} (${formatoDia(s.fecha)} ${esc(s.hora)})` });
+        for (const p of s.pujas) {
+            eventos.push({ t: p.fecha, icono: "💸", texto: `<strong>${esc(nombreUsuario(p.usuarioId))}</strong> puja ${p.cantidad} € en ${esc(s.titulo)}` });
+        }
+        if (s.estado === "finalizada" && s.ganador) {
+            eventos.push({ t: s.fin, icono: "🏆", texto: `<strong>${esc(s.ganador.nombre)}</strong> gana ${esc(s.titulo)} por ${s.precioActual} €` });
+        }
+    }
+    for (const r of Store.todasLasReservas()) {
+        if (r.creada) eventos.push({ t: r.creada, icono: "📅", texto: `<strong>${esc(nombreUsuario(r.userId))}</strong> reserva ${esc(nombreInstalacion(r.facility))} · ${esc(r.court)} (${formatoDia(r.date)} ${esc(r.time)})` });
+    }
+    for (const o of estado.opiniones) {
+        if (o.creada) eventos.push({ t: o.creada, icono: "⭐", texto: `<strong>${esc(o.nombre || "—")}</strong> opina sobre ${esc(nombreInstalacion(o.instalacionId))} (${o.puntuacion}/5)` });
+    }
+    return eventos.filter((e) => e.t <= Store.ahora() + 60000).sort((a, b) => b.t - a.t);
+}
+
+const pintarFeed = (id, eventos, vacio) => {
+    $(id).innerHTML = eventos.map((e) => `
+        <li><span class="admin-feed-icon" aria-hidden="true">${e.icono}</span>
+            <span>${e.texto}</span><time>${haceCuanto(e.t)}</time></li>`).join("")
+        || `<li class="admin-hint">${vacio}</li>`;
+};
+
+function pintarInteraccion() {
+    const ahora = Store.ahora();
+    const pujas = Store.listarSubastas().flatMap((s) => s.pujas);
+    const reservas = Store.todasLasReservas();
+    const media = estado.opiniones.length
+        ? (estado.opiniones.reduce((n, o) => n + o.puntuacion, 0) / estado.opiniones.length).toFixed(1) : "—";
+    const activos = new Set([
+        ...pujas.filter((p) => ahora - p.fecha < 7 * DIA).map((p) => p.usuarioId),
+        ...reservas.filter((r) => r.creada && ahora - r.creada < 7 * DIA).map((r) => r.userId),
+    ]);
+    $("interaccion-stats").innerHTML =
+        stat("Usuarios activos (7 días)", activos.size, `de ${estado.usuarios.length} registrados`) +
+        stat("Pujas (24 h)", pujas.filter((p) => ahora - p.fecha < DIA).length) +
+        stat("Reservas nuevas (7 días)", reservas.filter((r) => r.creada && ahora - r.creada < 7 * DIA).length) +
+        stat("Opiniones", estado.opiniones.length, `nota media ${media}`);
+
+    const filas = estado.opiniones
+        .filter((o) => coincide(o.nombre, o.comentario, nombreInstalacion(o.instalacionId)))
+        .sort((a, b) => (b.creada || 0) - (a.creada || 0))
+        .map((o) => {
+            const sospechosa = Store.textoProhibido(o.comentario);
+            return `
+            <tr class="${sospechosa ? "admin-row-warn" : ""}">
+                <td>${esc(nombreInstalacion(o.instalacionId))}</td>
+                <td>${esc(o.nombre || "—")}</td>
+                <td>${"★".repeat(o.puntuacion)}<span class="admin-stars-off">${"★".repeat(5 - o.puntuacion)}</span></td>
+                <td class="admin-wrap">${sospechosa ? `<span class="admin-warn">⚠️ lenguaje no permitido</span><br>` : ""}${esc(o.comentario)}</td>
+                <td>${formatoFecha(o.creada)}</td>
+                <td>${boton("borrar-opinion", "Borrar", { instalacion: o.instalacionId, usuario: o.usuarioId })}</td>
+            </tr>`;
+        });
+    $("admin-opiniones").innerHTML = filas.join("") || filaVacia(6, "No hay opiniones que coincidan.");
+
+    const eventos = actividad().filter((e) => coincide(e.texto.replace(/<[^>]+>/g, "")));
+    pintarFeed("interaccion-actividad", eventos.slice(0, 100), "Todavía no hay actividad.");
+}
+
+
+// =====================================================================
+// NOMBRES PROHIBIDOS
+// =====================================================================
+
+function pintarNombres() {
+    $("nombres-total").textContent = estado.prohibidos.length;
+    $("nombres-lista").innerHTML = estado.prohibidos.map((e) => `
+        <li class="admin-chip ${e.modo === "palabra" ? "chip-palabra" : ""}" title="${e.modo === "palabra" ? "Solo palabra completa" : "En cualquier parte del nombre"}">
+            ${esc(e.termino)}${e.modo === "palabra" ? " <small>(palabra)</small>" : ""}
+            <button type="button" data-accion="quitar-termino" data-termino="${esc(e.termino)}" aria-label="Quitar ${esc(e.termino)}">×</button>
+        </li>`).join("") || `<li class="admin-hint">La lista está vacía.</li>`;
+
+    const infractores = estado.usuarios.filter(motivoRevision);
+    $("nombres-infractores").innerHTML = infractores.map((u) => `
+        <li><span>⚠️ <strong>${esc(u.nombre)}</strong> (${esc(u.email)}) — ${esc(motivoRevision(u))}</span>
+            <span class="admin-acciones">${boton("renombrar", "Renombrar", { id: u.id }, "admin-action admin-action-neutral")}
+            ${u.bloqueado || u.admin ? "" : boton("suspender", "Suspender", { id: u.id })}</span></li>`).join("")
+        || `<li class="admin-hint">✅ Ningún usuario tiene un nombre no permitido.</li>`;
+    probarNombre();
+}
+
+function probarNombre() {
+    const nombre = $("nombres-probar").value;
+    const resultado = $("nombres-resultado");
+    if (!nombre.trim()) {
+        resultado.textContent = "";
+        resultado.className = "admin-test";
+        return;
+    }
+    const motivo = Store.motivoNombre(nombre);
+    resultado.textContent = motivo ? `❌ ${motivo}` : "✅ Nombre permitido";
+    resultado.className = `admin-test ${motivo ? "is-bad" : "is-ok"}`;
+}
+
+
+// =====================================================================
+// RESUMEN
+// =====================================================================
+
+function pintarResumen() {
+    const subastas = Store.listarSubastas();
+    const ahora = ahoraCeuta();
+    const reservas = Store.todasLasReservas();
+    const mes = ahora.slice(0, 7);
+    const delMes = movimientos().filter((m) => enPeriodo(m, mes));
+    const enCurso = subastas.filter((s) => s.estado === "activa");
+
+    $("resumen-stats").innerHTML =
+        stat("Usuarios", estado.usuarios.length, `${estado.usuarios.filter((u) => u.bloqueado).length} suspendidos`) +
+        stat("Ingresos del mes", dinero(sumar(delMes, "comision")), `${delMes.length} transacciones en ${nombrePeriodo(mes)}`) +
+        stat("Reservas próximas", reservas.filter((r) => `${r.date}T${r.time}` > ahora).length) +
+        stat("Subastas en curso", enCurso.length, `${enCurso.reduce((n, s) => n + s.pujas.length, 0)} pujas`) +
+        stat("Instalaciones", INSTALACIONES.length, `${new Set(INSTALACIONES.map((i) => i.deporte)).size} deportes`);
+
+    const alertas = [];
+    const revisar = estado.usuarios.filter(motivoRevision);
+    if (revisar.length) alertas.push(["⚠️", `${revisar.length} usuario(s) con nombre no permitido`, "usuarios", "revisar"]);
+    const sospechosas = estado.opiniones.filter((o) => Store.textoProhibido(o.comentario));
+    if (sospechosas.length) alertas.push(["💬", `${sospechosas.length} opinión(es) con lenguaje no permitido`, "interaccion"]);
+    const urgentes = enCurso.filter((s) => !s.pujas.length && s.restanteMs < 60 * 60 * 1000);
+    if (urgentes.length) alertas.push(["⏳", `${urgentes.length} subasta(s) terminan en menos de 1 h sin pujas (posible pista solidaria)`, "subastas", "sin-pujas"]);
+    const suspendidos = estado.usuarios.filter((u) => u.bloqueado);
+    if (suspendidos.length) alertas.push(["🔒", `${suspendidos.length} cuenta(s) suspendida(s)`, "usuarios", "suspendidos"]);
+    if (estado.avisoServidor) alertas.push(["🛠️", estado.avisoServidor, "resumen"]);
+
+    $("resumen-alertas").innerHTML = alertas.map(([icono, texto, tab, filtro]) => `
+        <li><span>${icono} ${esc(texto)}</span>
+            ${tab !== "resumen" ? `<button type="button" class="admin-action admin-action-neutral" data-ir="${tab}" data-filtro="${filtro || ""}">Ver</button>` : ""}</li>`).join("")
+        || `<li class="admin-hint">✅ Todo en orden: no hay nada pendiente.</li>`;
+
+    pintarFeed("resumen-actividad", actividad().slice(0, 12), "Todavía no hay actividad.");
+}
+
+
+// =====================================================================
+// NAVEGACIÓN Y CARGA
+// =====================================================================
+
+const pintores = {
+    resumen: pintarResumen,
+    facturacion: pintarFacturacion,
+    subastas: pintarSubastas,
+    reservas: pintarReservas,
+    usuarios: pintarUsuarios,
+    interaccion: pintarInteraccion,
+    nombres: pintarNombres,
+};
 
 function pintar() {
     if ($("admin-panel").hidden) return;
-    pintarResumen();
-    pintarUsuarios();
-    pintarSubastas();
-    pintarReservas();
+    $("admin-aviso-servidor").hidden = !estado.avisoServidor;
+    $("admin-aviso-servidor").textContent = estado.avisoServidor;
+    pintarUsuarios(); // también actualiza el contador de la pestaña
+    pintores[estado.pestana]();
 }
 
-function cambiarPestana(nueva) {
-    pestana = nueva;
+function cambiarPestana(nueva, filtro) {
+    estado.pestana = nueva;
     document.querySelectorAll(".admin-tabs [data-tab]").forEach((b) => {
         const activa = b.dataset.tab === nueva;
         b.classList.toggle("active", activa);
         b.setAttribute("aria-selected", activa);
     });
     document.querySelectorAll(".admin-section").forEach((s) => (s.hidden = s.dataset.seccion !== nueva));
+    $("admin-search-box").hidden = !["subastas", "reservas", "usuarios", "interaccion"].includes(nueva);
+    if (filtro) {
+        const grupo = nueva === "subastas" ? "subastas-filtros" : "usuarios-filtros";
+        $(grupo).querySelector(`[data-filtro="${filtro}"]`)?.click();
+    }
+    pintar();
 }
 
-async function cargarUsuarios() {
+async function intentar(promesa, porDefecto) {
     try {
-        usuarios = await Store.adminListarUsuarios();
+        return await promesa;
     } catch (error) {
-        UI.toast(`No se pudieron cargar los usuarios: ${error.message}`, "error");
+        if (/supabase\/admin\.sql/.test(error.message)) estado.avisoServidor = error.message;
+        else UI.toast(error.message, "error");
+        return porDefecto;
     }
+}
+
+async function cargar() {
+    estado.avisoServidor = "";
+    const [usuarios, opiniones, prohibidos, ajustes] = await Promise.all([
+        intentar(Store.adminListarUsuarios(), estado.usuarios),
+        intentar(Store.adminListarOpiniones(), []),
+        intentar(Store.adminListarNombresProhibidos(), NOMBRES_PROHIBIDOS_BASE),
+        intentar(Store.adminLeerAjustesFacturacion(), { ...FACTURACION_DEFECTO }),
+    ]);
+    Object.assign(estado, { usuarios, opiniones, prohibidos, ajustes });
 }
 
 async function mostrar() {
@@ -126,30 +652,160 @@ async function mostrar() {
     }
     $("admin-denegado").hidden = true;
     $("admin-panel").hidden = false;
-    await cargarUsuarios();
+    await cargar();
     pintar();
 }
+
+
+// ---------- eventos ----------
 
 document.querySelectorAll(".admin-tabs [data-tab]").forEach((b) => {
     b.addEventListener("click", () => cambiarPestana(b.dataset.tab));
 });
-$("admin-buscar").addEventListener("input", pintar);
-$("admin-solo-proximas").addEventListener("change", pintarReservas);
 
-document.querySelector(".admin-page").addEventListener("click", async (event) => {
-    const boton = event.target.closest("[data-accion]");
-    if (!boton) return;
-    const { accion, id } = boton.dataset;
+for (const [grupo, clave] of [["subastas-filtros", "filtroSubastas"], ["usuarios-filtros", "filtroUsuarios"]]) {
+    $(grupo).addEventListener("click", (event) => {
+        const b = event.target.closest("[data-filtro]");
+        if (!b) return;
+        estado[clave] = b.dataset.filtro;
+        $(grupo).querySelectorAll("[data-filtro]").forEach((x) => x.classList.toggle("active", x === b));
+        pintar();
+    });
+}
+
+$("admin-buscar").addEventListener("input", pintar);
+$("admin-solo-proximas").addEventListener("change", pintar);
+$("fact-periodo").addEventListener("change", pintarFacturacion);
+$("fact-exportar").addEventListener("click", exportarCSV);
+$("nombres-probar").addEventListener("input", probarNombre);
+UI.prepararModal($("liquidacion"));
+$("liquidacion-imprimir").addEventListener("click", () => window.print());
+
+$("fact-bonif-anadir").addEventListener("click", () => {
+    const id = $("fact-bonif-instalacion").value;
+    const pct = Number($("fact-bonif-pct").value);
+    if (!id) return;
+    if (!(pct >= 0 && pct <= 100)) {
+        UI.toast("Indica un porcentaje entre 0 y 100.", "error");
+        return;
+    }
+    estado.ajustes.bonificadas = { ...estado.ajustes.bonificadas, [id]: pct };
+    pintarBonificadas();
+    UI.toast("Bonificación añadida. Pulsa «Guardar ajustes» para aplicarla.");
+});
+
+$("fact-ajustes").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.target;
     try {
-        if (accion === "cancelar-subasta" && confirm("¿Cancelar esta subasta? Se anulan también sus pujas.")) {
+        estado.ajustes = await Store.adminGuardarAjustesFacturacion({
+            comisionReservas: form.comisionReservas.value,
+            comisionSubastas: form.comisionSubastas.value,
+            ipsi: form.ipsi.value,
+            bonificadas: estado.ajustes.bonificadas,
+        });
+        document.activeElement.blur();
+        UI.toast("Ajustes de facturación guardados.");
+        pintar();
+    } catch (error) {
+        UI.toast(error.message, "error");
+    }
+});
+
+$("nombres-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.target;
+    try {
+        estado.prohibidos = await Store.adminAnadirNombreProhibido(form.termino.value, form.modo.value);
+        UI.toast(`«${form.termino.value.trim()}» añadido a la lista.`);
+        form.reset();
+        pintar();
+    } catch (error) {
+        UI.toast(error.message, "error");
+    }
+});
+
+// Acciones de las tablas (botones con data-accion)
+document.querySelector(".admin-page").addEventListener("click", async (event) => {
+    const ir = event.target.closest("[data-ir]");
+    if (ir) {
+        cambiarPestana(ir.dataset.ir, ir.dataset.filtro);
+        return;
+    }
+    const b = event.target.closest("[data-accion]");
+    if (!b) return;
+    const { accion, id } = b.dataset;
+    const usuario = estado.usuarios.find((u) => u.id === id);
+    let recargarUsuarios = false;
+    try {
+        switch (accion) {
+        case "ver-pujas":
+            if (!estado.abiertas.delete(id)) estado.abiertas.add(id);
+            break;
+        case "cancelar-subasta":
+            if (!confirm("¿Cancelar esta subasta? Se anulan también sus pujas.")) return;
             await Store.adminCancelarSubasta(id);
             UI.toast("Subasta cancelada.");
-        }
-        if (accion === "borrar-reserva" && confirm("¿Borrar esta reserva? El usuario perderá la pista.")) {
+            break;
+        case "borrar-puja":
+            if (!confirm("¿Anular esta puja? La subasta vuelve a la puja anterior.")) return;
+            await Store.adminBorrarPuja(id);
+            UI.toast("Puja anulada.");
+            recargarUsuarios = true;
+            break;
+        case "borrar-reserva":
+            if (!confirm("¿Borrar esta reserva? El usuario perderá la pista.")) return;
             await Store.adminBorrarReserva(id);
-            await cargarUsuarios();
             UI.toast("Reserva borrada.");
+            recargarUsuarios = true;
+            break;
+        case "liquidacion":
+            mostrarLiquidacion(id);
+            return;
+        case "quitar-bonificada": {
+            const { [id]: _, ...resto } = estado.ajustes.bonificadas || {};
+            estado.ajustes.bonificadas = resto;
+            pintarBonificadas();
+            UI.toast("Bonificación quitada. Pulsa «Guardar ajustes» para aplicarlo.");
+            return;
         }
+        case "renombrar": {
+            const nombre = prompt(`Nuevo nombre visible para ${usuario.nombre}:`, usuario.nombre);
+            if (nombre === null || nombre.trim() === usuario.nombre) return;
+            await Store.adminRenombrarUsuario(id, nombre);
+            UI.toast("Nombre actualizado.");
+            recargarUsuarios = true;
+            break;
+        }
+        case "suspender": {
+            const motivo = prompt(`¿Por qué se suspende la cuenta de ${usuario.nombre}? (lo verán los administradores)`, "Nombre o comportamiento abusivo");
+            if (motivo === null) return;
+            await Store.adminBloquearUsuario(id, true, motivo);
+            UI.toast(`Cuenta de ${usuario.nombre} suspendida.`);
+            recargarUsuarios = true;
+            break;
+        }
+        case "reactivar":
+            if (!confirm(`¿Reactivar la cuenta de ${usuario.nombre}?`)) return;
+            await Store.adminBloquearUsuario(id, false);
+            UI.toast(`Cuenta de ${usuario.nombre} reactivada.`);
+            recargarUsuarios = true;
+            break;
+        case "borrar-opinion":
+            if (!confirm("¿Borrar esta opinión?")) return;
+            await Store.adminBorrarOpinion(Number(b.dataset.instalacion), b.dataset.usuario);
+            estado.opiniones = await Store.adminListarOpiniones();
+            UI.toast("Opinión borrada.");
+            break;
+        case "quitar-termino":
+            if (!confirm(`¿Quitar «${b.dataset.termino}» de la lista de nombres prohibidos?`)) return;
+            estado.prohibidos = await Store.adminQuitarNombreProhibido(b.dataset.termino);
+            UI.toast("Término quitado.");
+            break;
+        default:
+            return;
+        }
+        if (recargarUsuarios) estado.usuarios = await Store.adminListarUsuarios();
     } catch (error) {
         UI.toast(error.message, "error");
     }
@@ -159,3 +815,7 @@ document.querySelector(".admin-page").addEventListener("click", async (event) =>
 Store.inicializar().then(mostrar);
 document.addEventListener("datos-cambiados", pintar);
 document.addEventListener("sesion-cambiada", mostrar);
+// La cuenta atrás de las subastas y la actividad ("hace 5 min") se refrescan solas
+setInterval(() => {
+    if (["resumen", "subastas", "interaccion"].includes(estado.pestana)) pintar();
+}, 30000);
