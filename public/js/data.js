@@ -70,6 +70,7 @@ const INSTALACIONES = [
         mapa: "Campo Federativo José Benoliel, Ceuta",
         puntoMapa: [35.88968, -5.33289],
         deporte: "Fútbol",
+        gestion: "icd", // instalación pública: se reserva en el ICD
         pistas: ["Campo José Benoliel"],
         precioPrueba: 45,
         detalle: "Campo federativo de césped artificial.",
@@ -83,6 +84,7 @@ const INSTALACIONES = [
         puntoMapa: [35.88846, -5.3312],
         notaPuntoMapa: "Marcador orientativo en la barriada José Zurrón.",
         deporte: "Fútbol",
+        gestion: "icd", // instalación pública: se reserva en el ICD
         pistas: ["Pista de fútbol sala"],
         precioPrueba: 12,
         detalle: "Pista polideportiva al aire libre utilizada para fútbol sala.",
@@ -96,6 +98,7 @@ const INSTALACIONES = [
         puntoMapa: [35.88352, -5.34533],
         notaPuntoMapa: "Marcador orientativo en Puente del Quemadero.",
         deporte: "Fútbol",
+        gestion: "icd", // instalación pública: se reserva en el ICD
         pistas: ["Tuhami Al Lal", "Aiman Aomar"],
         precioPrueba: 25,
         detalle: "Dos campos de fútbol 7 con césped artificial, iluminación y vestuarios.",
@@ -109,6 +112,7 @@ const INSTALACIONES = [
         puntoMapa: [35.88793, -5.32514],
         notaPuntoMapa: "Marcador orientativo en la avenida de Barcelona.",
         deporte: "Fútbol",
+        gestion: "icd", // instalación pública: se reserva en el ICD
         pistas: ["Pista de fútbol sala"],
         precioPrueba: 12,
         detalle: "Pista de barrio utilizada para fútbol sala y baloncesto.",
@@ -121,6 +125,7 @@ const INSTALACIONES = [
         mapa: "Campo de Fútbol José Martínez Pirri, Ceuta",
         puntoMapa: [35.8916, -5.29923],
         deporte: "Fútbol",
+        gestion: "icd", // instalación pública: se reserva en el ICD
         pistas: ["Campo José Martínez Pirri"],
         precioPrueba: 45,
         detalle: "Campo federativo conocido como el 54.",
@@ -133,6 +138,7 @@ const INSTALACIONES = [
         mapa: "Campo Emilio Cózar, Ciudad del Fútbol de Ceuta",
         puntoMapa: [35.8841, -5.3265],
         deporte: "Fútbol",
+        gestion: "icd", // instalación pública: se reserva en el ICD
         pistas: ["Campo Emilio Cózar"],
         precioPrueba: 25,
         detalle: "Campo federativo en la Ciudad del Fútbol de Ceuta.",
@@ -146,6 +152,7 @@ const INSTALACIONES = [
         puntoMapa: [35.87898, -5.32862],
         notaPuntoMapa: "Marcador orientativo en la barriada Juan XXIII.",
         deporte: "Fútbol",
+        gestion: "icd", // instalación pública: se reserva en el ICD
         pistas: ["Pista polideportiva"],
         precioPrueba: 15,
         detalle: "Pista polideportiva exterior junto al local social de la barriada.",
@@ -159,6 +166,7 @@ const INSTALACIONES = [
         puntoMapa: [35.88813, -5.34387],
         notaPuntoMapa: "Marcador orientativo en el entorno del CEIP Santa Amelia.",
         deporte: "Fútbol",
+        gestion: "icd", // instalación pública: se reserva en el ICD
         pistas: ["Pista cubierta de fútbol sala"],
         precioPrueba: 20,
         detalle: "Pabellón cubierto con gradas y pista de fútbol sala.",
@@ -266,29 +274,7 @@ const FOTOS_RESERVA_ILUSTRATIVAS = {
 
 const formatoEuros = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", minimumFractionDigits: 0 });
 
-// Usuarios de prueba que se crean la primera vez que se abre la web.
-// Todos tienen la contraseña "demo1234".
-const USUARIOS_DEMO = [
-    { nombre: "Ana", email: "ana@ceutaplay.es", password: "demo1234" },
-    { nombre: "Luis", email: "luis@ceutaplay.es", password: "demo1234" },
-    { nombre: "Marta", email: "marta@ceutaplay.es", password: "demo1234" },
-    // Cuenta de administrador del modo local (en el servidor se nombra con supabase/admin.sql)
-    { nombre: "Equipo CeutaPlay", email: "admin@ceutaplay.es", password: "demo1234", admin: true },
-];
 
-// Reservas de ejemplo (modo local) para que el panel de facturación tenga datos.
-// diasDesdeHoy: negativo = ya jugada, positivo = próxima.
-const RESERVAS_DEMO = [
-    { email: "ana@ceutaplay.es", instalacionId: 1, pista: "Pista 1", diasDesdeHoy: -20, hora: "19:00" },
-    { email: "luis@ceutaplay.es", instalacionId: 2, pista: "Campo José Benoliel", diasDesdeHoy: -12, hora: "18:00" },
-    { email: "marta@ceutaplay.es", instalacionId: 16, pista: "Kayak 1", diasDesdeHoy: -9, hora: "11:00" },
-    { email: "ana@ceutaplay.es", instalacionId: 4, pista: "Doble 1", diasDesdeHoy: -5, hora: "10:00" },
-    { email: "luis@ceutaplay.es", instalacionId: 1, pista: "Pista 2", diasDesdeHoy: -2, hora: "20:00" },
-    { email: "marta@ceutaplay.es", instalacionId: 17, pista: "Tabla 2", diasDesdeHoy: 2, hora: "12:00" },
-    { email: "ana@ceutaplay.es", instalacionId: 3, pista: "Pista 1", diasDesdeHoy: 3, hora: "17:00" },
-    { email: "luis@ceutaplay.es", instalacionId: 10, pista: "Tuhami Al Lal", diasDesdeHoy: -35, hora: "19:00" },
-    { email: "marta@ceutaplay.es", instalacionId: 6, pista: "Pista 4", diasDesdeHoy: -48, hora: "18:00" },
-];
 
 // ---------------------------------------------------------------------
 // Moderación de nombres de usuario
@@ -392,6 +378,91 @@ const SUBASTA_AUTOMATICA = {
 // Horario por defecto de las pistas (igual que en reservas.html)
 const HORARIO_DEFECTO = Array.from({ length: 13 }, (_, i) => `${String(i + 9).padStart(2, "0")}:00`);
 
+// ---------------------------------------------------------------------
+// Turnos, duración y precios por franja
+//
+// Las reservas empiezan en tramos de 30 minutos y duran de 30 min a 3 h.
+// Precio: precioPrueba es el precio por hora en hora punta. En hora valle
+// (lunes a viernes antes de las 17:00) se cobra un 20 % menos.
+// Si cambias esto, cambia también precio_turno() en supabase/plataforma.sql.
+// ---------------------------------------------------------------------
+const TURNOS = {
+    tramoMin: 30,          // las reservas empiezan cada 30 min
+    duracionMin: 30,       // duración mínima
+    duracionMax: 180,      // duración máxima (3 h)
+    inicioPunta: "17:00",  // de lunes a viernes, desde esta hora es hora punta
+    factorValle: 0.8,      // hora valle: 20 % más barata
+};
+
+// Instalaciones públicas (gestion: "icd"): no se reservan en CeutaPlay,
+// se redirige al Instituto Ceutí de Deportes. Cambia la dirección si el ICD
+// publica una página de reservas propia.
+const URL_ICD = "https://www.ceuta.es/";
+
+const esInstalacionIcd = (i) => i && i.gestion === "icd";
+const esReservable = (i) => Boolean(i && i.pistas && i.pistas.length) && !esInstalacionIcd(i);
+
+const aMinutos = (hora) => {
+    const [h, m] = String(hora).split(":").map(Number);
+    return h * 60 + (m || 0);
+};
+const aHora = (min) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
+
+// Apertura y cierre: el horario de la instalación son las horas de inicio de
+// los turnos de 1 h (la última empieza 1 h antes de cerrar)
+function horarioDe(instalacion) {
+    const horas = (instalacion && instalacion.horario) || HORARIO_DEFECTO;
+    return { apertura: aMinutos(horas[0]), cierre: aMinutos(horas[horas.length - 1]) + 60 };
+}
+
+// Horas de inicio posibles (cada 30 min) para una duración dada
+function iniciosPosibles(instalacion, duracion = TURNOS.duracionMin) {
+    const { apertura, cierre } = horarioDe(instalacion);
+    const lista = [];
+    for (let m = apertura; m + duracion <= cierre; m += TURNOS.tramoMin) lista.push(aHora(m));
+    return lista;
+}
+
+const duracionesPosibles = () => {
+    const lista = [];
+    for (let d = TURNOS.duracionMin; d <= TURNOS.duracionMax; d += TURNOS.tramoMin) lista.push(d);
+    return lista;
+};
+
+const textoDuracion = (min) => (min % 60 === 0 ? `${min / 60} h` : min > 60 ? `${Math.floor(min / 60)} h ${min % 60} min` : `${min} min`);
+
+function esHoraPunta(fecha, minuto) {
+    const dia = new Date(`${fecha}T12:00:00Z`).getUTCDay(); // 0 domingo · 6 sábado
+    return dia === 0 || dia === 6 || minuto >= aMinutos(TURNOS.inicioPunta);
+}
+
+// Precio de una reserva: se suma tramo a tramo (30 min) según la franja
+function precioTurno(instalacion, fecha, hora, duracion = 60) {
+    const base = (instalacion && instalacion.precioPrueba) || 0;
+    let total = 0;
+    for (let m = aMinutos(hora); m < aMinutos(hora) + duracion; m += TURNOS.tramoMin) {
+        total += (base * (esHoraPunta(fecha, m) ? 1 : TURNOS.factorValle) * TURNOS.tramoMin) / 60;
+    }
+    return Math.round(total * 100) / 100;
+}
+
+// ---------------------------------------------------------------------
+// Monedero (simulacro de pago)
+//
+// Se paga con CeutaCoins (CC), 1 CC = 1 €. Cada cuenta nueva empieza con
+// 1.000.000 CC. Con ellas se pagan reservas y subastas; quien revende su
+// reserva cobra en CC. En producción, las recargas vendrían de una pasarela
+// de pago real (Redsys, Bizum…).
+// ---------------------------------------------------------------------
+const MONEDERO = {
+    moneda: "CC",
+    nombre: "CeutaCoins",
+    saldoInicial: 1000000,
+    reembolsoHorasAntes: 24, // cancelar con más de 24 h de antelación: se devuelve todo
+};
+
+const formatoCC = (n) => `${new Intl.NumberFormat("es-ES", { maximumFractionDigits: 2 }).format(n || 0)} CC`;
+
 const FACTURACION_DEFECTO = {
     comisionReservas: 10,   // % sobre el precio de cada reserva directa
     comisionSubastas: 15,   // % sobre el precio final de cada subasta adjudicada
@@ -401,7 +472,106 @@ const FACTURACION_DEFECTO = {
     bonificadas: {},
 };
 
-// Subastas de ejemplo. Los tiempos son relativos al momento en que se crean:
+// ---------------------------------------------------------------------
+// DATOS DE EJEMPLO (ficticios)
+//
+// Se crean la primera vez que se abre la web en modo local, y con ellos se
+// genera supabase/seed.sql para poblar el servidor de pruebas.
+// Todos los usuarios tienen la contraseña "demo1234". Personas, correos y
+// comentarios son inventados.
+//
+// Las fechas son relativas al día en que se crean:
+//   dias: 0 = hoy, -3 = hace tres días, 2 = pasado mañana…
+// ---------------------------------------------------------------------
+const USUARIOS_DEMO = [
+    { clave: "ana", nombre: "Ana Martín", email: "ana@ceutaplay.es", password: "demo1234", deporte: "Pádel",
+      bio: "Pádel tres veces por semana en La Marina. Busco pareja de nivel medio para jugar por las tardes." },
+    { clave: "luis", nombre: "Luis Benítez", email: "luis@ceutaplay.es", password: "demo1234", deporte: "Fútbol",
+      bio: "Fútbol 7 con los compañeros del trabajo y algo de tenis los domingos." },
+    { clave: "marta", nombre: "Marta Ríos", email: "marta@ceutaplay.es", password: "demo1234", deporte: "Paddle surf",
+      bio: "Si no hay levante, me encontrarás en la Ribera con la tabla. También juego al tenis." },
+    { clave: "karim", nombre: "Karim Ahmed", email: "karim@ceutaplay.es", password: "demo1234", deporte: "Pádel",
+      bio: "Jugador de pádel desde hace 6 años. Nivel 4. Me apunto a partidos de última hora." },
+    { clave: "lucia", nombre: "Lucía Gómez", email: "lucia@ceutaplay.es", password: "demo1234", deporte: "Tenis",
+      bio: "Entreno tenis en Loma Margarita. Me encanta jugar dobles mixtos." },
+    { clave: "youssef", nombre: "Youssef Mohamed", email: "youssef@ceutaplay.es", password: "demo1234", deporte: "Pádel",
+      bio: "Estudiante de la UGR en Ceuta. Pádel y kayak cuando el tiempo acompaña." },
+    { clave: "paula", nombre: "Paula Navarro", email: "paula@ceutaplay.es", password: "demo1234", deporte: "Tenis",
+      bio: "Tenis y running. Organizo partidos los sábados por la mañana, ¡únete!" },
+    { clave: "hamza", nombre: "Hamza Larbi", email: "hamza@ceutaplay.es", password: "demo1234", deporte: "Kayak",
+      bio: "Monitor de deportes náuticos en verano. El resto del año, pádel." },
+    { clave: "sara", nombre: "Sara Ortega", email: "sara@ceutaplay.es", password: "demo1234", deporte: "Pádel",
+      bio: "Empecé con el pádel hace un año y ya no puedo parar. Busco gente para aprender." },
+    { clave: "ivan", nombre: "Iván Ruiz", email: "ivan@ceutaplay.es", password: "demo1234", deporte: "Tenis",
+      bio: "Tenista de club. Si te falta uno para dobles, avísame." },
+    { clave: "nora", nombre: "Nora Haddou", email: "nora@ceutaplay.es", password: "demo1234", deporte: "Piragüismo",
+      bio: "Piragüismo en la bahía sur y pádel con amigas los jueves." },
+    // Cuentas con permisos especiales
+    { clave: "admin", nombre: "Equipo CeutaPlay", email: "admin@ceutaplay.es", password: "demo1234", admin: true,
+      bio: "Cuenta de administración de CeutaPlay." },
+    { clave: "gestor", nombre: "Gestión La Marina", email: "gestor@ceutaplay.es", password: "demo1234", gestiona: [1, 3],
+      bio: "Gestores de las pistas de pádel y tenis de La Marina." },
+    { clave: "entidad", nombre: "Asociación Estrella del Sur", email: "entidad@ceutaplay.es", password: "demo1234",
+      entidad: { nombre: "Asociación Juvenil Estrella del Sur", descripcion: "Deporte para jóvenes de los barrios del sur de Ceuta.", acreditada: true },
+      bio: "Asociación juvenil. Usamos la pista solidaria para nuestros grupos de deporte." },
+];
+
+// Reservas de ejemplo. publica: abierta para que otros pidan unirse.
+const RESERVAS_DEMO = [
+    // pasadas (para el historial, las reseñas y la facturación)
+    { usuario: "ana", instalacionId: 1, pista: "Pista 1", dias: -40, hora: "19:00", duracion: 90 },
+    { usuario: "karim", instalacionId: 4, pista: "Doble 1", dias: -33, hora: "18:00", duracion: 60 },
+    { usuario: "lucia", instalacionId: 6, pista: "Pista 4", dias: -27, hora: "10:00", duracion: 120 },
+    { usuario: "paula", instalacionId: 7, pista: "Pista 2", dias: -21, hora: "09:30", duracion: 90 },
+    { usuario: "marta", instalacionId: 17, pista: "Tabla 2", dias: -18, hora: "11:00", duracion: 60 },
+    { usuario: "hamza", instalacionId: 16, pista: "Kayak 1", dias: -15, hora: "12:00", duracion: 120 },
+    { usuario: "sara", instalacionId: 5, pista: "Pista de demostración", dias: -12, hora: "17:30", duracion: 60 },
+    { usuario: "ivan", instalacionId: 8, pista: "Pista 1", dias: -9, hora: "19:00", duracion: 60 },
+    { usuario: "youssef", instalacionId: 1, pista: "Pista 2", dias: -6, hora: "20:00", duracion: 90 },
+    { usuario: "nora", instalacionId: 18, pista: "Piragua 1", dias: -4, hora: "10:00", duracion: 60 },
+    { usuario: "luis", instalacionId: 3, pista: "Pista 1", dias: -2, hora: "18:00", duracion: 60 },
+    { usuario: "ana", instalacionId: 1, pista: "Pista 3", dias: -1, hora: "19:30", duracion: 60 },
+    // próximas
+    { usuario: "ana", instalacionId: 1, pista: "Pista 2", dias: 1, hora: "19:00", duracion: 90, publica: true, plazas: 4,
+      nota: "Partido de nivel medio. ¡Nos faltan dos!",
+      participantes: [{ usuario: "karim", estado: "aceptado", mensaje: "¡Me apunto!" }, { usuario: "sara", estado: "pendiente", mensaje: "¿Puedo ir aunque esté empezando?" }] },
+    { usuario: "paula", instalacionId: 7, pista: "Pista 1", dias: 2, hora: "10:00", duracion: 120, publica: true, plazas: 4,
+      nota: "Dobles de los sábados. Buen ambiente.",
+      participantes: [{ usuario: "ivan", estado: "aceptado", mensaje: "Cuenta conmigo" }, { usuario: "lucia", estado: "aceptado", mensaje: "" }] },
+    { usuario: "karim", instalacionId: 4, pista: "Doble 2", dias: 3, hora: "18:30", duracion: 60, publica: true, plazas: 4,
+      nota: "Pádel nivel 4, partido rápido después del trabajo.",
+      participantes: [{ usuario: "youssef", estado: "pendiente", mensaje: "Nivel 3,5, ¿vale?" }] },
+    { usuario: "lucia", instalacionId: 6, pista: "Pista 2", dias: 4, hora: "17:00", duracion: 90, publica: true, plazas: 4,
+      nota: "Dobles mixtos, falta una pareja." },
+    { usuario: "youssef", instalacionId: 5, pista: "Pista de demostración", dias: 5, hora: "16:00", duracion: 60 },
+    { usuario: "hamza", instalacionId: 16, pista: "Kayak 2", dias: 2, hora: "11:00", duracion: 120, publica: true, plazas: 3,
+      nota: "Salida en kayak por la Ribera si no sopla levante." },
+    { usuario: "luis", instalacionId: 3, pista: "Pista 2", dias: 6, hora: "20:00", duracion: 60 },
+    { usuario: "marta", instalacionId: 6, pista: "Pista 5", dias: 3, hora: "09:00", duracion: 60 },
+    { usuario: "sara", instalacionId: 1, pista: "Pista 3", dias: 7, hora: "18:00", duracion: 90, publica: true, plazas: 4,
+      nota: "Partido para principiantes, sin presión." },
+    { usuario: "nora", instalacionId: 8, pista: "Pista 3", dias: 8, hora: "19:30", duracion: 60 },
+];
+
+// Reseñas de las instalaciones
+const OPINIONES_DEMO = [
+    { usuario: "ana", instalacionId: 1, puntuacion: 5, dias: -39, comentario: "Pistas cuidadas y vistas al mar. Por la tarde se llena, mejor reservar con tiempo." },
+    { usuario: "karim", instalacionId: 1, puntuacion: 4, dias: -30, comentario: "Buen cristal y buena luz. Los vestuarios podrían estar mejor." },
+    { usuario: "youssef", instalacionId: 1, puntuacion: 5, dias: -5, comentario: "La subasta de última hora me salió a mitad de precio. ¡Genial!" },
+    { usuario: "karim", instalacionId: 4, puntuacion: 4, dias: -32, comentario: "Ambiente tranquilo y bien de precio." },
+    { usuario: "sara", instalacionId: 5, puntuacion: 3, dias: -11, comentario: "Está bien para empezar, aunque solo hay una pista." },
+    { usuario: "lucia", instalacionId: 6, puntuacion: 5, dias: -26, comentario: "Las mejores pistas de tenis de Ceuta. Muy buen mantenimiento." },
+    { usuario: "marta", instalacionId: 6, puntuacion: 4, dias: -20, comentario: "Muchas pistas disponibles, casi siempre hay hueco." },
+    { usuario: "paula", instalacionId: 7, puntuacion: 4, dias: -20, comentario: "Buen club y buen trato. Aparcar es un poco complicado." },
+    { usuario: "ivan", instalacionId: 8, puntuacion: 4, dias: -8, comentario: "Pistas rápidas, ideales para jugar de noche." },
+    { usuario: "luis", instalacionId: 3, puntuacion: 4, dias: -1, comentario: "Tenis junto al mar. Con viento cuesta un poco más." },
+    { usuario: "marta", instalacionId: 17, puntuacion: 5, dias: -17, comentario: "Tablas en muy buen estado y la bahía en calma. Repetiré." },
+    { usuario: "hamza", instalacionId: 16, puntuacion: 5, dias: -14, comentario: "Salida perfecta por la Ribera. Atentos al parte del levante." },
+    { usuario: "nora", instalacionId: 18, puntuacion: 4, dias: -3, comentario: "Piraguas cómodas. El monitor explica muy bien." },
+];
+
+// Subastas de ejemplo (reventas de reservas). Los tiempos son relativos al
+// momento en que se crean:
 // - terminaEnMin: minutos que quedan para que termine la subasta
 // - partidoEnHoras: horas que faltan para el partido
 const SUBASTAS_DEMO = [
@@ -419,18 +589,18 @@ const SUBASTAS_DEMO = [
         ],
     },
     {
-        instalacionId: 2,
-        vendedor: "luis@ceutaplay.es",
-        descripcion: "Campo de fútbol 7 libre esta tarde.",
-        precioSalida: 25,
-        incremento: 2,
+        instalacionId: 6,
+        vendedor: "lucia@ceutaplay.es",
+        descripcion: "Me ha surgido un viaje. Pista de tenis cubierta.",
+        precioSalida: 8,
+        incremento: 1,
         terminaEnMin: 240,
-        partidoEnHoras: 8,
+        partidoEnHoras: 30,
         pujas: [],
     },
     {
         instalacionId: 3,
-        vendedor: "marta@ceutaplay.es",
+        vendedor: "ivan@ceutaplay.es",
         descripcion: "Pista de tenis para mañana por la mañana.",
         precioSalida: 8,
         incremento: 1,
@@ -438,6 +608,7 @@ const SUBASTAS_DEMO = [
         partidoEnHoras: 18,
         pujas: [
             { email: "ana@ceutaplay.es", cantidad: 9 },
+            { email: "paula@ceutaplay.es", cantidad: 10 },
         ],
     },
 ];

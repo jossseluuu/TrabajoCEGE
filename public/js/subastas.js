@@ -29,7 +29,6 @@ const Subastas = (() => {
 
     const $ = (id) => document.getElementById(id);
     const esc = (t) => UI.escapeHTML(t);
-    const euros = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" });
 
     // ---------- formatos de subasta ----------
 
@@ -47,11 +46,11 @@ const Subastas = (() => {
         if (!usuario || s.tipo === "automatica" || s.vendedorId !== usuario.id) return "";
         const { neto } = s.reparto;
         if (s.estado === "finalizada" && s.ganador) {
-            return `<p class="auction-payout">💰 Recibes <strong>${euros.format(neto)}</strong>
-                    (${s.precioActual} € − comisión ${s.comisionPct} % − IPSI)</p>`;
+            return `<p class="auction-payout">💰 Recibes <strong>${formatoCC(neto)}</strong>
+                    (${s.precioActual} CC − comisión ${s.comisionPct} % − IPSI)</p>`;
         }
         if (s.estado === "activa") {
-            return `<p class="auction-payout">💰 Si se vende a este precio recibirás <strong>${euros.format(neto)}</strong>
+            return `<p class="auction-payout">💰 Si se vende a este precio recibirás <strong>${formatoCC(neto)}</strong>
                     · comisión CeutaPlay ${s.comisionPct} % + IPSI</p>`;
         }
         return "";
@@ -133,7 +132,7 @@ const Subastas = (() => {
         if (s.estado === "finalizada") {
             if (!s.ganador) return `<button type="button" class="auction-btn" disabled>Terminó sin pujas</button>`;
             if (usuario && s.ganador.id === usuario.id) {
-                return `<button type="button" class="auction-btn btn-win" disabled>🏆 ¡La has ganado por ${s.precioActual} €!</button>`;
+                return `<button type="button" class="auction-btn btn-win" disabled>🏆 ¡La has ganado por ${s.precioActual} CC!</button>`;
             }
             return `<button type="button" class="auction-btn" disabled>Ganada por ${esc(s.ganador.nombre)}</button>`;
         }
@@ -148,7 +147,7 @@ const Subastas = (() => {
         if (s.mejorPuja && s.mejorPuja.usuarioId === usuario.id) {
             return `<button type="button" class="auction-btn btn-win" data-accion="pujar" data-id="${s.id}">🏆 Vas ganando · ver pujas</button>`;
         }
-        return `<button type="button" class="auction-btn btn-primary" data-accion="pujar" data-id="${s.id}">Pujar · mín. ${s.pujaMinima} €</button>`;
+        return `<button type="button" class="auction-btn btn-primary" data-accion="pujar" data-id="${s.id}">Pujar · mín. ${s.pujaMinima} CC</button>`;
     }
 
     function avisoTarjeta(s, usuario) {
@@ -176,8 +175,8 @@ const Subastas = (() => {
         const normal = precioNormal(s);
         const pct = ahorro(s);
         const lineaAhorro = !normal ? "" : pct > 0
-            ? `<p class="auction-saving">💸 ${s.estado === "finalizada" ? "Se ahorró" : "Ahorras"} un <strong>${pct}%</strong> · precio normal ${normal} €/h</p>`
-            : `<p class="auction-saving is-neutral">Precio normal de la pista: ${normal} €/h</p>`;
+            ? `<p class="auction-saving">💸 ${s.estado === "finalizada" ? "Se ahorró" : "Ahorras"} un <strong>${pct}%</strong> · precio normal ${normal} CC/h</p>`
+            : `<p class="auction-saving is-neutral">Precio normal de la pista: ${normal} CC/h</p>`;
 
         const barra = s.estado === "activa" ? `
                 <div class="auction-progress" aria-hidden="true">
@@ -198,11 +197,11 @@ const Subastas = (() => {
                 <div class="auction-price">
                     <div>
                         <small>Precio de salida</small>
-                        ${s.pujas.length ? `<del>${s.precioSalida} €</del>` : `<span class="price-start">${s.precioSalida} €</span>`}
+                        ${s.pujas.length ? `<del>${s.precioSalida} CC</del>` : `<span class="price-start">${s.precioSalida} CC</span>`}
                     </div>
                     <div>
                         <small>${etiquetaPrecio}</small>
-                        <strong>${s.precioActual} €</strong>
+                        <strong>${s.precioActual} CC</strong>
                     </div>
                 </div>
                 ${lineaAhorro}
@@ -288,12 +287,12 @@ const Subastas = (() => {
                 if (!antes || antes.estado !== "activa") continue;
                 const ahora = nuevo.get(s.id);
                 if (antes.ganando && ahora.estado === "activa" && !ahora.ganando) {
-                    UI.toast(`⚠️ Te han superado en ${s.titulo}: ahora va por ${s.precioActual} €.`, "error");
+                    UI.toast(`⚠️ Te han superado en ${s.titulo}: ahora va por ${s.precioActual} CC.`, "error");
                 } else if (antes.ganando && ahora.estado === "finalizada" && ahora.ganando) {
-                    UI.toast(`🏆 ¡Has ganado la subasta de ${s.titulo} por ${s.precioActual} €! La reserva ya es tuya.`);
+                    UI.toast(`🏆 ¡Has ganado la subasta de ${s.titulo} por ${s.precioActual} CC! La reserva ya es tuya.`);
                 } else if (s.vendedorId === usuario.id && ahora.estado === "finalizada") {
                     UI.toast(s.ganador
-                        ? `💰 Tu subasta de ${s.titulo} se ha cerrado: la gana ${s.ganador.nombre} por ${s.precioActual} €. Recibes ${euros.format(s.reparto.neto)}.`
+                        ? `💰 Tu subasta de ${s.titulo} se ha cerrado: la gana ${s.ganador.nombre} por ${s.precioActual} CC. Recibes ${formatoCC(s.reparto.neto)}.`
                         : `Tu subasta de ${s.titulo} ha terminado sin pujas.`);
                 }
             }
@@ -396,7 +395,7 @@ const Subastas = (() => {
                     <li class="${i === 0 ? "is-top" : ""}">
                         <span>${i === 0 ? "🏆 " : ""}${esc(autor ? autor.nombre : "—")}${soyYo ? " (tú)" : ""}</span>
                         <span class="bid-time">${haceCuanto(p.fecha)}</span>
-                        <strong>${p.cantidad} €</strong>
+                        <strong>${p.cantidad} CC</strong>
                     </li>`;
             }).join("")
             : `<li class="bid-empty">Nadie ha pujado todavía. ¡Sé el primero!</li>`;
@@ -420,7 +419,7 @@ const Subastas = (() => {
             <div class="bid-summary">
                 <div>
                     <small>${s.pujas.length ? "Puja actual" : "Precio de salida"}</small>
-                    <strong>${s.precioActual} €</strong>
+                    <strong>${s.precioActual} CC</strong>
                 </div>
                 <div>
                     <small>Termina en</small>
@@ -430,21 +429,21 @@ const Subastas = (() => {
                 </div>
             </div>
 
-            ${precioNormal(s) ? `<p class="auction-saving">Precio normal de la pista: ${precioNormal(s)} €/h${ahorro(s) > 0 ? ` · ahora mismo te ahorras un <strong>${ahorro(s)}%</strong>` : ""}</p>` : ""}
+            ${precioNormal(s) ? `<p class="auction-saving">Precio normal de la pista: ${precioNormal(s)} CC/h${ahorro(s) > 0 ? ` · ahora mismo te ahorras un <strong>${ahorro(s)}%</strong>` : ""}</p>` : ""}
 
             ${estadoTexto}
 
             ${puedePujar ? `
             <form id="bid-form" class="modal-form" novalidate>
-                <label for="bid-cantidad">Tu puja (mínimo ${s.pujaMinima} €, incrementos de ${s.incremento} €)</label>
+                <label for="bid-cantidad">Tu puja (mínimo ${s.pujaMinima} CC, incrementos de ${s.incremento} CC)</label>
                 <div class="bid-input">
                     <input type="number" id="bid-cantidad" name="cantidad"
                            min="${s.pujaMinima}" step="1" value="${s.pujaMinima}" required>
-                    <span>€</span>
+                    <span>CC</span>
                 </div>
                 <div class="quick-bids">
                     ${[0, s.incremento, s.incremento * 3, s.incremento * 5].map((extra) =>
-                        `<button type="button" data-puja="${s.pujaMinima + extra}">${s.pujaMinima + extra} €</button>`
+                        `<button type="button" data-puja="${s.pujaMinima + extra}">${s.pujaMinima + extra} CC</button>`
                     ).join("")}
                 </div>
                 <p class="form-error" hidden></p>
@@ -487,7 +486,7 @@ const Subastas = (() => {
             try {
                 const actualizada = await Store.pujar(s.id, cantidad);
                 if (actualizada) subastaAbierta = actualizada.id; // en un turno libre se crea la subasta
-                UI.toast(`✅ Has pujado ${cantidad} € por ${s.titulo}.`);
+                UI.toast(`✅ Has pujado ${cantidad} CC por ${s.titulo}.`);
                 pintar();
             } catch (error) {
                 pintar(); // por si otra persona ha pujado mientras tanto
@@ -523,8 +522,10 @@ const Subastas = (() => {
         const inputPrecio = $("crear-precio");
         let reservas = [];
 
+        // La reventa puede durar como máximo hasta que empieza la reserva
         selDuracion.innerHTML = DURACIONES.map((d) =>
-            `<option value="${d.minutos}">${d.texto}</option>`).join("");
+            `<option value="${d.minutos}">${d.texto}</option>`).join("") +
+            `<option value="inicio">Hasta que empiece la reserva</option>`;
 
         const reservaElegida = () => reservas.find((r) => String(r.id) === selReserva.value) || null;
         const instalacionReserva = (r) => INSTALACIONES.find((i) => i.id === r.facility) || null;
@@ -535,7 +536,7 @@ const Subastas = (() => {
             const enSubasta = new Set(Store.listarSubastas()
                 .filter((s) => s.reservaId && !s.cancelada && !s.cerrada).map((s) => s.reservaId));
             return Store.misReservas()
-                .filter((r) => instalacionReserva(r)?.subastable !== false)
+                .filter((r) => instalacionReserva(r)?.subastable !== false && (r.tipo || "normal") === "normal")
                 .filter((r) => Store.msMadrid(r.date, r.time) > Store.ahora() + 5 * 60000)
                 .filter((r) => usuario && !enSubasta.has(r.id))
                 .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
@@ -545,10 +546,10 @@ const Subastas = (() => {
         function actualizarDuraciones() {
             const r = reservaElegida();
             const margen = r ? Store.msMadrid(r.date, r.time) - Store.ahora() : Infinity;
-            [...selDuracion.options].forEach((o) => (o.disabled = Number(o.value) * 60000 >= margen));
+            [...selDuracion.options].forEach((o) => (o.disabled = o.value !== "inicio" && Number(o.value) * 60000 > margen));
             if (!selDuracion.selectedOptions[0] || selDuracion.selectedOptions[0].disabled) {
                 const validas = [...selDuracion.options].filter((o) => !o.disabled);
-                const preferida = validas.filter((o) => Number(o.value) <= 60).pop() || validas[0];
+                const preferida = validas.filter((o) => o.value !== "inicio" && Number(o.value) <= 60).pop() || validas[0];
                 if (preferida) selDuracion.value = preferida.value;
             }
         }
@@ -560,21 +561,21 @@ const Subastas = (() => {
             const comision = Math.round(precio * comisionSubastas) / 100;
             const ipsiEuros = Math.round(comision * ipsi) / 100;
             $("crear-reparto").innerHTML = r ? `
-                <p><strong>Si se vende al precio de salida (${precio} €):</strong></p>
+                <p><strong>Si se vende al precio de salida (${precio} CC):</strong></p>
                 <dl>
-                    <dt>Comisión CeutaPlay (${comisionSubastas} %)</dt><dd>− ${euros.format(comision)}</dd>
-                    <dt>IPSI de la comisión (${ipsi} %)</dt><dd>− ${euros.format(ipsiEuros)}</dd>
-                    <dt><strong>Recibes</strong></dt><dd><strong>${euros.format(precio - comision - ipsiEuros)}</strong></dd>
+                    <dt>Comisión CeutaPlay (${comisionSubastas} %)</dt><dd>− ${formatoCC(comision)}</dd>
+                    <dt>IPSI de la comisión (${ipsi} %)</dt><dd>− ${formatoCC(ipsiEuros)}</dd>
+                    <dt><strong>Recibes</strong></dt><dd><strong>${formatoCC(precio - comision - ipsiEuros)}</strong></dd>
                 </dl>
                 <p class="form-hint">Si nadie puja, la reserva sigue siendo tuya.</p>` : "";
         }
 
         function elegirReserva() {
             const r = reservaElegida();
-            const normal = r && instalacionReserva(r)?.precioPrueba;
-            inputPrecio.value = normal ? Math.max(1, Math.round(normal / 2)) : 10;
-            $("crear-precio-ayuda").textContent = normal
-                ? `Pagaste ${normal} €/h por esta pista. Te proponemos salir a la mitad para atraer pujas.` : "";
+            const pagado = r && (r.importe ?? precioTurno(instalacionReserva(r), r.date, r.time, r.duracion || 60));
+            inputPrecio.value = pagado ? Math.max(1, Math.round(pagado / 2)) : 10;
+            $("crear-precio-ayuda").textContent = pagado
+                ? `Pagaste ${formatoCC(pagado)} por esta reserva (${textoDuracion(r.duracion || 60)}). Te proponemos salir a la mitad para atraer pujas.` : "";
             if (r && !$("crear-descripcion").dataset.editado) {
                 $("crear-descripcion").value = `Reserva de ${r.court}. No puedo ir.`;
             }
@@ -595,7 +596,7 @@ const Subastas = (() => {
                 selReserva.innerHTML = reservas.map((r) => {
                     const instalacion = instalacionReserva(r);
                     const dia = r.date.split("-").reverse().slice(0, 2).join("/");
-                    return `<option value="${esc(r.id)}">${esc(instalacion ? instalacion.nombre : "Instalación")} · ${esc(r.court)} · ${dia} ${esc(r.time)}</option>`;
+                    return `<option value="${esc(r.id)}">${esc(instalacion ? instalacion.nombre : "Instalación")} · ${esc(r.court)} · ${dia} ${esc(r.time)} (${textoDuracion(r.duracion || 60)})</option>`;
                 }).join("");
                 $("crear-sin-reservas").hidden = reservas.length > 0;
                 form.hidden = reservas.length === 0;

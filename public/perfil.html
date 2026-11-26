@@ -23,6 +23,21 @@
             <h1 id="profile-title">Mi perfil</h1>
             <p id="profile-name" hidden></p>
             <p id="profile-email" class="profile-email"></p>
+            <section class="profile-bookings wallet" id="monedero" aria-labelledby="wallet-title">
+                <div class="profile-bookings-header">
+                    <h2 id="wallet-title">🪙 Mi monedero</h2>
+                    <span class="wallet-balance" id="wallet-balance">0 CC</span>
+                </div>
+                <p class="form-hint">Simulacro de pago: en CeutaPlay se paga con <strong>CeutaCoins (CC)</strong>, 1 CC = 1 €. Cada cuenta empieza con 1.000.000 CC. En la versión real, las recargas llegarían desde una pasarela de pago.</p>
+                <div class="wallet-actions">
+                    <span>Recargar (simulado):</span>
+                    <button type="button" class="login-btn" data-recarga="100">+100 CC</button>
+                    <button type="button" class="login-btn" data-recarga="1000">+1.000 CC</button>
+                    <button type="button" class="login-btn" data-recarga="10000">+10.000 CC</button>
+                </div>
+                <h3>Últimos movimientos</h3>
+                <ul class="wallet-moves" id="wallet-moves"></ul>
+            </section>
             <section class="profile-bookings" aria-labelledby="bookings-title">
                 <div class="profile-bookings-header">
                     <h2 id="bookings-title">Mis reservas</h2>

@@ -132,11 +132,55 @@ const Store = (() => {
         };
     }
 
+    // Contraseña: al menos 8 caracteres, con letras y números
+    function validarPassword(password) {
+        const p = String(password || "");
+        if (p.length < 8) throw new Error("La contraseña debe tener al menos 8 caracteres.");
+        if (!/[A-Za-zÀ-ÿ]/.test(p) || !/\d/.test(p)) throw new Error("La contraseña debe tener letras y números.");
+        if (/^(.)\1+$/.test(p) || /^(12345678|password|contraseña)/i.test(p)) throw new Error("Esa contraseña es demasiado fácil.");
+    }
+
+    // ---------- reservas por tramos ----------
+
+    const solapan = (a, b) => a.facility === b.facility && a.court === b.court && a.date === b.date &&
+        aMinutos(a.time) < aMinutos(b.time) + (b.duracion || 60) && aMinutos(b.time) < aMinutos(a.time) + (a.duracion || 60);
+
+    function validarReserva({ facility, court, date, time, duracion = 60 }, ahoraMs) {
+        const instalacion = INSTALACIONES.find((i) => i.id === Number(facility));
+        if (!instalacion || !instalacion.pistas || !instalacion.pistas.includes(court)) throw new Error("Elige una pista.");
+        if (esInstalacionIcd(instalacion)) throw new Error("Esta instalación es pública: se reserva en el Instituto Ceutí de Deportes.");
+        duracion = Number(duracion);
+        if (!duracionesPosibles().includes(duracion)) throw new Error("La duración tiene que ser de 30 min a 3 h, en tramos de 30 min.");
+        if (!/^\d{2}:\d{2}$/.test(time || "") || aMinutos(time) % TURNOS.tramoMin) throw new Error("Las reservas empiezan a en punto o a y media.");
+        const { apertura, cierre } = horarioDe(instalacion);
+        if (aMinutos(time) < apertura || aMinutos(time) + duracion > cierre) {
+            throw new Error(`Fuera del horario de la instalación (${aHora(apertura)} a ${aHora(cierre)}).`);
+        }
+        if (msMadrid(date, time) <= ahoraMs) throw new Error("Elige un turno futuro.");
+        return { instalacion, facility: instalacion.id, court, date, time, duracion, importe: precioTurno(instalacion, date, time, duracion) };
+    }
+
+    // ---------- comunidad: puntos y niveles (gamificación) ----------
+
+    const NIVELES = [
+        { min: 0, nombre: "Novato", icono: "🌱" },
+        { min: 30, nombre: "Habitual", icono: "🎾" },
+        { min: 80, nombre: "Competidor", icono: "🔥" },
+        { min: 160, nombre: "Veterano", icono: "🏅" },
+        { min: 300, nombre: "Leyenda de Ceuta", icono: "🏆" },
+    ];
+
+    function nivelDe(puntos) {
+        const actual = [...NIVELES].reverse().find((n) => puntos >= n.min);
+        const siguiente = NIVELES.find((n) => n.min > puntos) || null;
+        return { ...actual, puntos, siguiente, faltan: siguiente ? siguiente.min - puntos : 0 };
+    }
+
     function validarRegistro({ nombre, email, password }, lista) {
         nombre = validarNombre(nombre, lista);
         email = normalizarEmail(email);
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("El correo no es válido.");
-        if (String(password || "").length < 6) throw new Error("La contraseña debe tener al menos 6 caracteres.");
+        validarPassword(password);
         return { nombre, email, password };
     }
 
@@ -176,11 +220,14 @@ const Store = (() => {
         const precioSalida = Number(datos.precioSalida);
         const incremento = Number(datos.incremento);
         const duracionMin = Number(datos.duracionMin);
+        // "inicio" (o 0): la subasta dura hasta que empieza la reserva
+        const hastaInicio = datos.duracionMin === "inicio" || duracionMin === 0;
         if (!datos.reservaId) throw new Error("Elige la reserva que quieres subastar.");
-        if (!(precioSalida >= 1)) throw new Error("El precio de salida debe ser de al menos 1 €.");
-        if (!(incremento >= 1)) throw new Error("El incremento mínimo debe ser de al menos 1 €.");
-        if (!(duracionMin >= 1)) throw new Error("Elige la duración de la subasta.");
+        if (!(precioSalida >= 1)) throw new Error("El precio de salida debe ser de al menos 1 CC.");
+        if (!(incremento >= 1)) throw new Error("El incremento mínimo debe ser de al menos 1 CC.");
+        if (!hastaInicio && !(duracionMin >= 1)) throw new Error("Elige la duración de la subasta.");
         return {
+            hastaInicio,
             reservaId: datos.reservaId,
             precioSalida: Math.round(precioSalida),
             incremento: Math.round(incremento),
@@ -219,36 +266,39 @@ const Store = (() => {
     // puja, la subasta no existe en la base de datos: se calcula aquí igual en
     // todos los dispositivos. Con la primera puja se crea de verdad.
 
-    const tieneSubastaAutomatica = (i) => Boolean(i.pistas && i.pistas.length) && i.subastable !== false &&
+    const tieneSubastaAutomatica = (i) => esReservable(i) && i.subastable !== false &&
         (i.subastaAutomatica ?? SUBASTA_AUTOMATICA.deportes.includes(i.deporte));
 
-    const precioSalidaAutomatica = (i) =>
-        Math.max(1, Math.ceil((i.precioPrueba || 0) * SUBASTA_AUTOMATICA.descuentoSalida));
+    // Mitad del precio de 1 h en esa franja (hora valle o punta)
+    const precioSalidaAutomatica = (i, fecha, hora) =>
+        Math.max(1, Math.ceil(precioTurno(i, fecha, hora, 60) * SUBASTA_AUTOMATICA.descuentoSalida));
 
     const claveTurno = (instalacionId, pista, fecha, hora) => `${instalacionId}|${pista}|${fecha}|${hora}`;
 
     function calcularHuecos(ahora, ocupados, subastas) {
         const ventana = SUBASTA_AUTOMATICA.horasAntes * 60 * MINUTO;
         const cierre = SUBASTA_AUTOMATICA.cierreMinAntes * MINUTO;
-        const ocupado = new Set(ocupados.map((r) => claveTurno(r.facility, r.court, r.date, r.time)));
-        for (const sub of subastas) {
-            if (sub.tipo === "automatica" && !sub.cancelada) ocupado.add(claveTurno(sub.instalacionId, sub.pista, sub.fecha, sub.hora));
-        }
+        const autos = new Set(subastas.filter((sub) => sub.tipo === "automatica" && !sub.cancelada)
+            .map((sub) => claveTurno(Number(sub.instalacionId), sub.pista, sub.fecha, sub.hora)));
+        const libre = (inst, pista, fecha, hora) => !autos.has(claveTurno(inst.id, pista, fecha, hora)) &&
+            !ocupados.some((r) => solapan(r, { facility: inst.id, court: pista, date: fecha, time: hora, duracion: 60 }));
         const dias = [textoMadrid(ahora).slice(0, 10), textoMadrid(ahora + 24 * 60 * MINUTO).slice(0, 10)];
         const huecos = [];
         for (const inst of INSTALACIONES.filter(tieneSubastaAutomatica)) {
             for (const fecha of dias) {
-                for (const hora of inst.horario || HORARIO_DEFECTO) {
+                const horario = horarioDe(inst);
+                for (let m = horario.apertura; m + 60 <= horario.cierre; m += 60) {
+                    const hora = aHora(m);
                     const inicio = msMadrid(fecha, hora);
                     const fin = inicio - cierre;
                     if (ahora < inicio - ventana || ahora >= fin) continue;
-                    const libres = inst.pistas.filter((p) => !ocupado.has(claveTurno(inst.id, p, fecha, hora)));
+                    const libres = inst.pistas.filter((p) => libre(inst, p, fecha, hora));
                     if (!libres.length) continue;
                     huecos.push({
                         id: `auto|${inst.id}|${fecha}|${hora}`, virtual: true, tipo: "automatica",
                         instalacionId: inst.id, titulo: inst.nombre, deporte: inst.deporte, fecha, hora,
                         pista: null, pistasLibres: libres, descripcion: "",
-                        precioSalida: precioSalidaAutomatica(inst), incremento: 1,
+                        precioSalida: precioSalidaAutomatica(inst, fecha, hora), incremento: 1,
                         fin, creada: inicio - ventana, vendedorId: null, cancelada: false, cerrada: false, pujas: [],
                     });
                 }
@@ -333,9 +383,13 @@ const Store = (() => {
         let sesion = null;
         let nombresEnAgenda = false;
         let tarifas = { comisionSubastas: FACTURACION_DEFECTO.comisionSubastas, ipsi: FACTURACION_DEFECTO.ipsi };
-        // turnos ocupados (sin datos personales) para quien no ha iniciado sesión
-        let ocupadosPublicos = [];
-        const datos = { perfiles: new Map(), subastas: [], pujas: [], reservas: [] };
+        // turnos ocupados de todo el mundo, sin datos personales
+        let ocupados = [];
+        let plataforma = true; // false si aún no se ha ejecutado supabase/plataforma.sql
+        const datos = {
+            perfiles: new Map(), subastas: [], pujas: [], reservas: [],
+            participantes: [], movimientos: [], gestiona: [], entidad: null, peticiones: [],
+        };
 
         const ahora = () => Date.now() + desfase;
 
@@ -360,8 +414,12 @@ const Store = (() => {
 
         const cargadores = {
             async perfiles() {
-                const filas = comprobar(await client.from("perfiles").select("id, nombre"));
-                datos.perfiles = new Map(filas.map((p) => [p.id, { id: p.id, nombre: p.nombre }]));
+                let r = await client.from("perfiles").select("id, nombre, creado, bio, deporte_favorito");
+                if (r.error) r = await client.from("perfiles").select("id, nombre, creado");
+                datos.perfiles = new Map(comprobar(r).map((p) => [p.id, {
+                    id: p.id, nombre: p.nombre, creado: Date.parse(p.creado) || null,
+                    bio: p.bio || "", deporteFavorito: p.deporte_favorito || "",
+                }]));
             },
             async subastas() {
                 const filas = comprobar(await client.from("subastas").select("*"));
@@ -399,32 +457,71 @@ const Store = (() => {
                 }));
             },
             async reservas() {
+                // Turnos ocupados (anónimos): para la disponibilidad de todos
+                const t = await client.rpc("turnos_ocupados", {});
+                ocupados = t.error ? [] : t.data.map((o) => ({
+                    id: o.id, facility: o.instalacion_id, court: o.pista, date: o.fecha, time: o.hora,
+                    duracion: o.duracion_min || 60, tipo: o.tipo || "normal", anonima: true,
+                }));
                 if (!sesion) {
                     datos.reservas = [];
-                    const r = await client.rpc("turnos_ocupados");
-                    ocupadosPublicos = r.error ? [] : r.data.map((t) => ({
-                        facility: t.instalacion_id, court: t.pista, date: t.fecha, time: t.hora,
-                    }));
                     return;
                 }
-                const campos = "id, usuario_id, instalacion_id, pista, fecha, hora, creada";
-                let resultado = await client.from("reservas").select(`${campos}, mostrar_nombre`);
-                if (resultado.error?.code === "42703" || resultado.error?.code === "PGRST204") {
-                    nombresEnAgenda = false;
-                    resultado = await client.from("reservas").select(campos);
-                } else if (!resultado.error) {
-                    nombresEnAgenda = true;
-                }
-                const filas = comprobar(resultado);
-                datos.reservas = filas.map((r) => ({
+                const campos = "id, usuario_id, instalacion_id, pista, fecha, hora, creada, mostrar_nombre";
+                let resultado = await client.from("reservas")
+                    .select(`${campos}, duracion_min, importe, publica, plazas, tipo, nota`);
+                plataforma = !resultado.error;
+                if (resultado.error) resultado = await client.from("reservas").select(campos);
+                nombresEnAgenda = true;
+                datos.reservas = comprobar(resultado).map((r) => ({
                     id: r.id,
                     userId: r.usuario_id,
                     facility: r.instalacion_id,
                     court: r.pista,
                     date: r.fecha,
                     time: r.hora,
+                    duracion: r.duracion_min || 60,
+                    importe: r.importe != null ? Number(r.importe) : null,
+                    publica: r.publica === true,
+                    plazas: r.plazas || 4,
+                    tipo: r.tipo || "normal",
+                    nota: r.nota || "",
                     creada: Date.parse(r.creada) || null,
-                    mostrarNombre: r.mostrar_nombre === true,
+                    mostrarNombre: r.mostrar_nombre === true || r.publica === true,
+                }));
+            },
+            async participantes() {
+                if (!sesion || !plataforma) { datos.participantes = []; return; }
+                const r = await client.from("participantes").select("reserva_id, usuario_id, estado, mensaje, creado");
+                datos.participantes = r.error ? [] : r.data.map((x) => ({
+                    reservaId: x.reserva_id, usuarioId: x.usuario_id, estado: x.estado,
+                    mensaje: x.mensaje || "", creado: Date.parse(x.creado),
+                }));
+            },
+            async movimientos() {
+                if (!sesion || !plataforma) { datos.movimientos = []; return; }
+                const r = await client.from("movimientos").select("id, importe, tipo, concepto, referencia, creado")
+                    .eq("usuario_id", sesion.id).order("creado", { ascending: false });
+                datos.movimientos = r.error ? [] : r.data.map((m) => ({
+                    id: m.id, importe: Number(m.importe), tipo: m.tipo, concepto: m.concepto,
+                    referencia: m.referencia, creado: Date.parse(m.creado),
+                }));
+            },
+            async gestores() {
+                if (!sesion || !plataforma) { datos.gestiona = []; return; }
+                const r = await client.from("gestores").select("instalacion_id").eq("usuario_id", sesion.id);
+                datos.gestiona = r.error ? [] : r.data.map((g) => g.instalacion_id);
+            },
+            async peticiones_solidarias() {
+                if (!sesion || !plataforma) { datos.entidad = null; datos.peticiones = []; return; }
+                const [e, pt] = await Promise.all([
+                    client.from("entidades_solidarias").select("nombre, descripcion, acreditada").eq("usuario_id", sesion.id).maybeSingle(),
+                    client.from("peticiones_solidarias").select("*").eq("entidad_id", sesion.id).order("fecha", { ascending: false }),
+                ]);
+                datos.entidad = e.error || !e.data ? null : e.data;
+                datos.peticiones = pt.error ? [] : pt.data.map((x) => ({
+                    id: x.id, deporte: x.deporte, instalacionId: x.instalacion_id, fecha: x.fecha,
+                    desde: x.desde, hasta: x.hasta, estado: x.estado, reservaId: x.reserva_id,
                 }));
             },
         };
@@ -439,7 +536,8 @@ const Store = (() => {
                 if (!tablas.includes("perfiles") &&
                     (datos.pujas.some((p) => desconocido(p.usuarioId)) ||
                      datos.subastas.some((s) => desconocido(s.vendedorId)) ||
-                     datos.reservas.some((r) => r.mostrarNombre && desconocido(r.userId)))) {
+                     datos.participantes.some((x) => desconocido(x.usuarioId)) ||
+                     datos.reservas.some((r) => desconocido(r.userId)))) {
                     await cargadores.perfiles();
                 }
             } catch (error) {
@@ -500,6 +598,9 @@ const Store = (() => {
                 leerSesion().catch(() => (sesion = null)),
             ]);
             if (hora && hora.data) desfase = Date.parse(hora.data) - Date.now();
+            // La disponibilidad de los demás no llega en tiempo real (privacidad):
+            // se refresca cada minuto
+            setInterval(() => document.visibilityState === "visible" && recargar("reservas"), 60000);
             const t = await client.rpc("tarifas_subastas");
             if (!t.error && t.data) tarifas = { ...tarifas, ...t.data };
 
@@ -526,7 +627,7 @@ const Store = (() => {
                     await leerSesion().catch(() => (sesion = null));
                     if ((sesion && sesion.id) !== antes) {
                         avisar("sesion-cambiada");
-                        recargar("reservas");
+                        recargar("reservas", "participantes", "movimientos", "gestores", "peticiones_solidarias");
                     }
                 }, 0);
             });
@@ -550,7 +651,7 @@ const Store = (() => {
                 throw new Error("Cuenta creada. Revisa tu correo para confirmarla y después inicia sesión.");
             }
             await leerSesion();
-            await recargar("perfiles", "reservas");
+            await recargar();
             return sesion;
         }
 
@@ -558,13 +659,13 @@ const Store = (() => {
             sessionStorage.setItem(RECORDAR, recordar ? "1" : "0");
             comprobar(await client.auth.signInWithPassword({ email: normalizarEmail(email), password }));
             await leerSesion();
-            await recargar("perfiles", "reservas");
+            await recargar();
             return sesion;
         }
 
         async function cerrarSesion() {
             sesion = null;
-            datos.reservas = [];
+            Object.assign(datos, { reservas: [], participantes: [], movimientos: [], gestiona: [], entidad: null, peticiones: [] });
             await client.auth.signOut({ scope: "local" }).catch(() => {});
             sessionStorage.removeItem(RECORDAR);
         }
@@ -612,7 +713,7 @@ const Store = (() => {
         async function pujar(subastaId, cantidad) {
             exigirActivo();
             cantidad = Number(cantidad);
-            if (!Number.isInteger(cantidad)) throw new Error("La puja tiene que ser un número entero de euros.");
+            if (!Number.isInteger(cantidad)) throw new Error("La puja tiene que ser un número entero de CeutaCoins.");
             try {
                 comprobar(await client.rpc("pujar", { p_subasta: subastaId, p_cantidad: cantidad }));
             } finally {
@@ -628,14 +729,23 @@ const Store = (() => {
         }
 
         const faltaSubastasSql = () =>
-            new Error("Falta actualizar el servidor: ejecuta supabase/subastas.sql en el SQL Editor de Supabase.");
+            new Error("Falta actualizar el servidor: ejecuta supabase/plataforma.sql en el SQL Editor de Supabase.");
+
+        // Llamada a una función de plataforma.sql con mensaje claro si falta
+        async function rpcPlataforma(funcion, parametros, ...recargas) {
+            const resultado = await client.rpc(funcion, parametros);
+            if (noExiste(resultado.error)) throw faltaSubastasSql();
+            const valor = comprobar(resultado);
+            if (recargas.length) await recargar(...recargas);
+            return valor;
+        }
 
         async function crearSubastaReventa(datosReventa) {
             exigirActivo();
             const v = validarReventa(datosReventa);
             const resultado = await client.rpc("crear_subasta_reventa", {
                 p_reserva: v.reservaId, p_precio_salida: v.precioSalida, p_incremento: v.incremento,
-                p_duracion_min: v.duracionMin, p_descripcion: v.descripcion,
+                p_duracion_min: v.hastaInicio ? 0 : v.duracionMin, p_descripcion: v.descripcion,
             });
             if (noExiste(resultado.error)) throw faltaSubastasSql();
             const id = comprobar(resultado);
@@ -646,7 +756,7 @@ const Store = (() => {
         async function pujarHueco(instalacionId, fecha, hora, cantidad) {
             exigirActivo();
             cantidad = Number(cantidad);
-            if (!Number.isInteger(cantidad)) throw new Error("La puja tiene que ser un número entero de euros.");
+            if (!Number.isInteger(cantidad)) throw new Error("La puja tiene que ser un número entero de CeutaCoins.");
             const resultado = await client.rpc("pujar_hueco", {
                 p_instalacion: instalacionId, p_fecha: fecha, p_hora: hora, p_cantidad: cantidad,
             });
@@ -664,7 +774,7 @@ const Store = (() => {
                 if (noExiste(resultado.error)) sinCierre = true;
                 return 0;
             }
-            if (resultado.data > 0) await recargar("subastas", "reservas");
+            if (resultado.data > 0) await recargar("subastas", "reservas", "movimientos", "peticiones_solidarias");
             return resultado.data;
         }
 
@@ -672,22 +782,113 @@ const Store = (() => {
 
         const misReservas = () => (sesion ? datos.reservas.filter((r) => r.userId === sesion.id) : []);
 
-        const pistaOcupada = (facility, court, date, time) => datos.reservas.some((r) =>
-            r.facility === facility && r.court === court && r.date === date && r.time === time);
+        // Todas las reservas (las visibles con datos y el resto como turno ocupado)
+        function turnosOcupados() {
+            const vistas = new Set(datos.reservas.map((r) => r.id));
+            return [...datos.reservas, ...ocupados.filter((o) => !vistas.has(o.id))];
+        }
 
-        async function reservar({ facility, court, date, time, mostrarNombre = false }) {
+        const pistaOcupada = (facility, court, date, time, duracion = 60) =>
+            turnosOcupados().some((r) => solapan(r, { facility, court, date, time, duracion }));
+
+        async function reservar(datosReserva) {
             exigirActivo();
-            comprobar(await client.from("reservas").insert({
-                instalacion_id: facility, pista: court, fecha: date, hora: time,
-                ...(mostrarNombre && nombresEnAgenda ? { mostrar_nombre: true } : {}),
-            }));
-            await recargar("reservas");
+            const v = validarReserva(datosReserva, ahora());
+            const publica = Boolean(datosReserva.publica ?? datosReserva.mostrarNombre);
+            const id = await rpcPlataforma("reservar_pista", {
+                p_instalacion: v.facility, p_pista: v.court, p_fecha: v.date, p_hora: v.time,
+                p_duracion: v.duracion, p_publica: publica, p_plazas: Number(datosReserva.plazas) || 4,
+                p_nota: String(datosReserva.nota || "").slice(0, 140),
+            }, "reservas", "movimientos");
+            return id;
         }
 
         async function cancelarReserva(id) {
             exigirSesion();
-            comprobar(await client.from("reservas").delete().eq("id", id));
-            await recargar("reservas");
+            const devuelto = await rpcPlataforma("cancelar_reserva", { p_reserva: id }, "reservas", "movimientos", "participantes");
+            return Number(devuelto) || 0;
+        }
+
+        async function configurarReserva(id, { publica, plazas, nota }) {
+            exigirActivo();
+            await rpcPlataforma("configurar_reserva", {
+                p_reserva: id, p_publica: Boolean(publica), p_plazas: Number(plazas) || 4, p_nota: String(nota || "").slice(0, 140),
+            }, "reservas");
+        }
+
+        // ---------- comunidad ----------
+
+        async function solicitarUnirse(reservaId, mensaje = "") {
+            exigirActivo();
+            await rpcPlataforma("solicitar_unirse", { p_reserva: reservaId, p_mensaje: String(mensaje).slice(0, 140) }, "participantes");
+        }
+
+        async function responderSolicitud(reservaId, usuarioId, aceptar) {
+            exigirActivo();
+            await rpcPlataforma("responder_solicitud", { p_reserva: reservaId, p_usuario: usuarioId, p_aceptar: Boolean(aceptar) }, "participantes");
+        }
+
+        async function salirDeReserva(reservaId) {
+            exigirSesion();
+            await rpcPlataforma("salir_de_reserva", { p_reserva: reservaId }, "participantes", "reservas");
+        }
+
+        async function actualizarPerfil({ nombre, bio, deporteFavorito }) {
+            exigirActivo();
+            nombre = validarNombre(nombre, listaProhibidos);
+            await rpcPlataforma("actualizar_perfil", { p_nombre: nombre, p_bio: String(bio || ""), p_deporte: String(deporteFavorito || "") }, "perfiles");
+            await leerSesion();
+            avisar("sesion-cambiada");
+        }
+
+        async function listarOpinionesDe(usuarioId) {
+            if (!sesion) return [];
+            const r = await client.from("opiniones").select("instalacion_id, usuario_id, puntuacion, comentario").eq("usuario_id", usuarioId);
+            return r.error ? [] : r.data.map((o) => ({ instalacionId: o.instalacion_id, usuarioId: o.usuario_id, puntuacion: o.puntuacion, comentario: o.comentario }));
+        }
+
+        // ---------- monedero ----------
+
+        const saldo = () => redondear(datos.movimientos.reduce((n, m) => n + m.importe, 0));
+
+        async function recargarSaldo(importe) {
+            exigirActivo();
+            await rpcPlataforma("recargar_saldo", { p_importe: Number(importe) }, "movimientos");
+        }
+
+        // ---------- gestores de instalaciones ----------
+
+        async function gestorBloquear({ facility, court, date, time, duracion, nota }) {
+            exigirSesion();
+            await rpcPlataforma("gestor_bloquear", {
+                p_instalacion: Number(facility), p_pista: court, p_fecha: date, p_hora: time,
+                p_duracion: Number(duracion), p_nota: String(nota || ""),
+            }, "reservas");
+        }
+
+        async function gestorDesbloquear(id) {
+            exigirSesion();
+            await rpcPlataforma("gestor_desbloquear", { p_reserva: id }, "reservas");
+        }
+
+        // ---------- pista solidaria ----------
+
+        async function solicitarEntidad(nombre, descripcion) {
+            exigirActivo();
+            await rpcPlataforma("solicitar_entidad", { p_nombre: String(nombre).trim(), p_descripcion: String(descripcion || "") }, "peticiones_solidarias");
+        }
+
+        async function crearPeticionSolidaria({ deporte, instalacionId, fecha, desde, hasta }) {
+            exigirActivo();
+            await rpcPlataforma("crear_peticion_solidaria", {
+                p_deporte: deporte, p_instalacion: instalacionId ? Number(instalacionId) : null,
+                p_fecha: fecha, p_desde: desde, p_hasta: hasta,
+            }, "peticiones_solidarias");
+        }
+
+        async function cancelarPeticionSolidaria(id) {
+            exigirSesion();
+            await rpcPlataforma("cancelar_peticion_solidaria", { p_peticion: id }, "peticiones_solidarias");
         }
 
         async function listarOpiniones(instalacionId) {
@@ -726,9 +927,36 @@ const Store = (() => {
 
         async function adminBorrarReserva(id) {
             exigirAdmin();
-            const filas = comprobar(await client.from("reservas").delete().eq("id", id).select("id"));
-            if (!filas.length) throw new Error("No se ha podido borrar (¿has ejecutado supabase/admin.sql?).");
-            await recargar("reservas");
+            await rpcPlataforma("cancelar_reserva", { p_reserva: id }, "reservas");
+        }
+
+        async function adminBonificar(usuarioId, importe, concepto) {
+            exigirAdmin();
+            await rpcPlataforma("admin_bonificar", { p_usuario: usuarioId, p_importe: Number(importe), p_concepto: String(concepto || "") }, "movimientos");
+        }
+
+        async function adminFijarSaldo(usuarioId, nuevoSaldo, concepto) {
+            exigirAdmin();
+            await rpcPlataforma("admin_fijar_saldo", { p_usuario: usuarioId, p_saldo: Number(nuevoSaldo), p_concepto: String(concepto || "") }, "movimientos");
+        }
+
+        async function adminAsignarGestor(usuarioId, instalacionId, asignar) {
+            exigirAdmin();
+            await rpcPlataforma("admin_asignar_gestor", { p_usuario: usuarioId, p_instalacion: Number(instalacionId), p_asignar: Boolean(asignar) }, "gestores");
+        }
+
+        async function adminAcreditarEntidad(usuarioId, acreditar) {
+            exigirAdmin();
+            await rpcPlataforma("admin_acreditar_entidad", { p_usuario: usuarioId, p_acreditar: Boolean(acreditar) });
+        }
+
+        async function adminListarPeticionesSolidarias() {
+            exigirAdmin();
+            const r = await client.from("peticiones_solidarias").select("*, entidades_solidarias(nombre)").order("fecha", { ascending: false });
+            return r.error ? [] : r.data.map((x) => ({
+                id: x.id, entidadId: x.entidad_id, entidad: x.entidades_solidarias?.nombre || "—", deporte: x.deporte,
+                instalacionId: x.instalacion_id, fecha: x.fecha, desde: x.desde, hasta: x.hasta, estado: x.estado,
+            }));
         }
 
         // Mensaje claro si falta la parte nueva de admin.sql
@@ -748,6 +976,8 @@ const Store = (() => {
                 admin: u.es_admin, reservas: Number(u.reservas), subastas: Number(u.subastas), pujas: Number(u.pujas),
                 bloqueado: Boolean(u.bloqueado), motivoBloqueo: u.motivo_bloqueo || "",
                 nombreRechazado: u.nombre_rechazado || "",
+                saldo: u.saldo != null ? Number(u.saldo) : null, gestiona: u.gestiona || [],
+                entidad: u.entidad || "", entidadAcreditada: Boolean(u.entidad_acreditada),
             }));
         }
 
@@ -835,9 +1065,16 @@ const Store = (() => {
             inicializar, ahora, registrar, login, cerrarSesion, usuarioActual, getUsuario,
             listarSubastas, getSubasta, crearSubasta, pujar, cancelarSubasta,
             misReservas, pistaOcupada, reservar, cancelarReserva,
-            reservasParaAgenda: () => sesion ? datos.reservas : [],
+            reservasParaAgenda: () => (sesion ? turnosOcupados() : []),
             todasLasReservas: () => datos.reservas,
-            turnosOcupados: () => (sesion ? datos.reservas : ocupadosPublicos),
+            turnosOcupados,
+            configurarReserva, solicitarUnirse, responderSolicitud, salirDeReserva, actualizarPerfil, listarOpinionesDe,
+            participantes: () => datos.participantes,
+            movimientos: () => datos.movimientos, saldo, recargarSaldo,
+            gestiona: () => datos.gestiona, gestorBloquear, gestorDesbloquear,
+            entidad: () => datos.entidad, peticionesSolidarias: () => datos.peticiones,
+            solicitarEntidad, crearPeticionSolidaria, cancelarPeticionSolidaria,
+            adminBonificar, adminFijarSaldo, adminAsignarGestor, adminAcreditarEntidad, adminListarPeticionesSolidarias,
             crearSubastaReventa, pujarHueco, cerrarSubastas,
             tarifasSubastas: () => tarifas,
             permiteMostrarNombre: () => nombresEnAgenda,
@@ -870,7 +1107,15 @@ const Store = (() => {
             opiniones: `cp_opiniones:${CARPETA}`,
             prohibidos: `cp_nombres_prohibidos:${CARPETA}`,
             ajustes: `cp_ajustes_facturacion:${CARPETA}`,
+            participantes: `cp_participantes:${CARPETA}`,
+            movimientos: `cp_movimientos:${CARPETA}`,
+            gestores: `cp_gestores:${CARPETA}`,
+            entidades: `cp_entidades:${CARPETA}`,
+            peticiones: `cp_peticiones:${CARPETA}`,
+            version: `cp_version_demo:${CARPETA}`,
         };
+        // Si cambian los datos de ejemplo, se suben de versión y se recrean
+        const VERSION_DEMO = "3";
 
         const ahora = () => Date.now();
 
@@ -913,8 +1158,19 @@ const Store = (() => {
             return {
                 id: usuario.id, nombre: usuario.nombre, email: usuario.email,
                 admin: Boolean(usuario.admin), bloqueado: Boolean(usuario.bloqueado),
+                creado: usuario.creado || null, bio: usuario.bio || "", deporteFavorito: usuario.deporteFavorito || "",
             };
         }
+
+        // ---------- monedero ----------
+
+        const todosMovimientos = () => leer(KEYS.movimientos, []);
+        function moverSaldo(usuarioId, importe, tipo, concepto, referencia = null) {
+            const lista = todosMovimientos();
+            lista.push({ id: nuevoId(), usuarioId, importe: redondear(importe), tipo, concepto: String(concepto).slice(0, 160), referencia, creado: ahora() });
+            guardar(KEYS.movimientos, lista);
+        }
+        const saldoDe = (usuarioId) => redondear(todosMovimientos().filter((m) => m.usuarioId === usuarioId).reduce((n, m) => n + m.importe, 0));
 
         // ---------- cuentas ----------
 
@@ -932,6 +1188,7 @@ const Store = (() => {
             const usuario = { id: nuevoId(), nombre, email, sal, hash: await hashPassword(password, sal), creado: Date.now() };
             usuarios.push(usuario);
             guardar(KEYS.usuarios, usuarios);
+            moverSaldo(usuario.id, MONEDERO.saldoInicial, "bienvenida", "Saldo inicial de CeutaCoins");
             return usuarioPublico(usuario);
         }
 
@@ -1023,8 +1280,9 @@ const Store = (() => {
                 throw new Error("Ya tienes la puja más alta.");
             }
             if (!Number.isInteger(cantidad) || cantidad < subasta.pujaMinima) {
-                throw new Error(`La puja mínima es de ${subasta.pujaMinima} €.`);
+                throw new Error(`La puja mínima es de ${subasta.pujaMinima} CC.`);
             }
+            if (saldoDe(usuario.id) < cantidad) throw new Error("No tienes saldo suficiente para esa puja.");
 
             raw.pujas.push({ id: nuevoId(), usuarioId: usuario.id, cantidad, fecha: Date.now() });
             guardar(KEYS.subastas, subastas);
@@ -1056,15 +1314,17 @@ const Store = (() => {
             const usuario = exigirActivo();
             const v = validarReventa(datosReventa);
             const reserva = todasLasReservas().find((r) => r.id === v.reservaId);
-            if (!reserva || reserva.userId !== usuario.id) throw new Error("Solo puedes subastar tus propias reservas.");
+            if (!reserva || reserva.userId !== usuario.id || (reserva.tipo || "normal") !== "normal") {
+                throw new Error("Solo puedes subastar tus propias reservas.");
+            }
             const instalacion = INSTALACIONES.find((i) => i.id === reserva.facility);
             if (instalacion && instalacion.subastable === false) {
                 throw new Error("Las reservas de esta instalación no se pueden subastar.");
             }
-            const fin = Date.now() + v.duracionMin * MINUTO;
-            if (msMadrid(reserva.date, reserva.time) <= fin) {
-                throw new Error("La subasta tiene que terminar antes de que empiece el partido.");
-            }
+            const inicio = msMadrid(reserva.date, reserva.time);
+            if (inicio <= ahora() + 2 * MINUTO) throw new Error("Esta reserva empieza ya: no da tiempo a subastarla.");
+            const fin = v.hastaInicio ? inicio : ahora() + v.duracionMin * MINUTO;
+            if (fin > inicio) throw new Error("La subasta puede durar como máximo hasta que empiece la reserva.");
             const subastas = getSubastasRaw();
             if (subastas.some((s) => s.reservaId === reserva.id && subastaAbierta(s))) {
                 throw new Error("Esta reserva ya está en subasta.");
@@ -1115,8 +1375,8 @@ const Store = (() => {
             return subasta.id;
         }
 
-        // Adjudica las subastas terminadas: crea la reserva (automáticas) o
-        // se la pasa al ganador (reventa)
+        // Adjudica las subastas terminadas (crea la reserva o se la pasa al
+        // ganador, cobra y paga) y cede pistas solidarias
         async function cerrarSubastas() {
             const subastas = getSubastasRaw();
             const reservas = todasLasReservas();
@@ -1128,25 +1388,64 @@ const Store = (() => {
                 n++;
                 if (!mejor) continue;
                 if (raw.tipo === "automatica") {
-                    const ocupada = reservas.some((r) => r.facility === raw.instalacionId && r.court === raw.pista &&
-                        r.date === raw.fecha && r.time === raw.hora);
-                    if (!ocupada) {
-                        reservas.push({
-                            id: nuevoId(), userId: mejor.usuarioId, facility: raw.instalacionId, court: raw.pista,
-                            date: raw.fecha, time: raw.hora, mostrarNombre: false, creada: ahora(),
-                        });
+                    const nueva = { facility: raw.instalacionId, court: raw.pista, date: raw.fecha, time: raw.hora, duracion: 60 };
+                    if (!reservas.some((r) => solapan(r, nueva))) {
+                        const id = nuevoId();
+                        reservas.push({ ...nueva, id, userId: mejor.usuarioId, importe: mejor.cantidad, tipo: "normal",
+                            publica: false, plazas: 4, nota: "", mostrarNombre: false, creada: ahora() });
+                        moverSaldo(mejor.usuarioId, -mejor.cantidad, "subasta", `Subasta de última hora ganada · ${raw.titulo} · ${raw.pista}`, id);
                     }
                 } else if (raw.tipo === "reventa") {
                     const reserva = reservas.find((r) => r.id === raw.reservaId && r.userId === raw.vendedorId);
-                    if (reserva) Object.assign(reserva, { userId: mejor.usuarioId, mostrarNombre: false });
+                    if (reserva) {
+                        Object.assign(reserva, { userId: mejor.usuarioId, publica: false, mostrarNombre: false });
+                        guardar(KEYS.participantes, leer(KEYS.participantes, []).filter((x) => x.reservaId !== reserva.id));
+                        const r = reparto(mejor.cantidad, raw.comisionPct ?? FACTURACION_DEFECTO.comisionSubastas, raw.ipsiPct ?? FACTURACION_DEFECTO.ipsi);
+                        moverSaldo(mejor.usuarioId, -mejor.cantidad, "subasta", `Reventa ganada · ${raw.titulo} · ${raw.pista}`, reserva.id);
+                        moverSaldo(raw.vendedorId, r.neto, "venta", `Reventa vendida · ${raw.titulo} (comisión ${raw.comisionPct} % + IPSI)`, reserva.id);
+                    }
                 }
             }
-            if (n) {
+            const cedidas = cederPistasSolidarias(reservas);
+            if (n || cedidas) {
                 guardar(KEYS.subastas, subastas);
                 guardar(KEYS.reservas, reservas);
                 avisar("datos-cambiados");
             }
             return n;
+        }
+
+        // Pista solidaria: si una pista de última hora se queda sin pujas (la
+        // subasta cierra 15 min antes), se cede a una entidad que la ha pedido
+        function cederPistasSolidarias(reservas) {
+            const peticiones = leer(KEYS.peticiones, []);
+            const hoy = textoMadrid(ahora()).slice(0, 10);
+            let cambios = 0;
+            for (const pet of peticiones) {
+                if (pet.estado === "pendiente" && pet.fecha < hoy) { pet.estado = "caducada"; cambios++; continue; }
+                if (pet.estado !== "pendiente" || pet.fecha !== hoy) continue;
+                const hora = aHora((Number(textoMadrid(ahora()).slice(11, 13)) + 1) * 60);
+                if (msMadrid(hoy, hora) - ahora() > 15 * MINUTO) continue;
+                if (aMinutos(hora) < aMinutos(pet.desde) || aMinutos(hora) + 60 > aMinutos(pet.hasta)) continue;
+                const candidatas = INSTALACIONES.filter((i) => tieneSubastaAutomatica(i) && i.deporte === pet.deporte &&
+                    (!pet.instalacionId || i.id === Number(pet.instalacionId)));
+                for (const inst of candidatas) {
+                    const { apertura, cierre } = horarioDe(inst);
+                    if (aMinutos(hora) < apertura || aMinutos(hora) + 60 > cierre) continue;
+                    const pista = inst.pistas.find((c) => !reservas.some((r) =>
+                        solapan(r, { facility: inst.id, court: c, date: hoy, time: hora, duracion: 60 })));
+                    if (!pista) continue;
+                    const id = nuevoId();
+                    reservas.push({ id, userId: pet.entidadId, facility: inst.id, court: pista, date: hoy, time: hora,
+                        duracion: 60, importe: 0, tipo: "solidaria", publica: false, plazas: 4,
+                        nota: "Pista solidaria cedida por CeutaPlay", mostrarNombre: false, creada: ahora() });
+                    Object.assign(pet, { estado: "cumplida", reservaId: id });
+                    cambios++;
+                    break;
+                }
+            }
+            if (cambios) guardar(KEYS.peticiones, peticiones);
+            return cambios;
         }
 
         // ---------- reservas ----------
@@ -1158,22 +1457,34 @@ const Store = (() => {
             return usuario ? todasLasReservas().filter((r) => r.userId === usuario.id) : [];
         }
 
-        const pistaOcupada = (facility, court, date, time) => todasLasReservas().some((r) =>
-            r.facility === facility && r.court === court && r.date === date && r.time === time);
+        const pistaOcupada = (facility, court, date, time, duracion = 60) =>
+            todasLasReservas().some((r) => solapan(r, { facility, court, date, time, duracion }));
 
-        async function reservar({ facility, court, date, time, mostrarNombre = false }) {
+        async function reservar(datosReserva) {
             const usuario = exigirActivo();
-            if (pistaOcupada(facility, court, date, time)) {
-                throw new Error("Esa pista ya está reservada por otro usuario en ese turno.");
+            const v = validarReserva(datosReserva, ahora());
+            if (pistaOcupada(v.facility, v.court, v.date, v.time, v.duracion)) {
+                throw new Error("Esa pista ya está reservada en parte de ese horario.");
             }
             if (getSubastasRaw().some((s) => s.tipo === "automatica" && subastaAbierta(s) &&
-                s.instalacionId === facility && s.pista === court && s.fecha === date && s.hora === time)) {
-                throw new Error("Esa pista está en subasta de última hora: puja por ella en la sección de subastas.");
+                solapan({ facility: Number(s.instalacionId), court: s.pista, date: s.fecha, time: s.hora, duracion: 60 }, v))) {
+                throw new Error("Parte de ese horario está en subasta de última hora: puja por él en la sección de subastas.");
             }
+            if (saldoDe(usuario.id) < v.importe) throw new Error(`No tienes saldo suficiente (necesitas ${formatoCC(v.importe)}).`);
+            const publica = Boolean(datosReserva.publica ?? datosReserva.mostrarNombre);
+            const reserva = {
+                id: nuevoId(), userId: usuario.id, facility: v.facility, court: v.court, date: v.date, time: v.time,
+                duracion: v.duracion, importe: v.importe, tipo: "normal", publica, mostrarNombre: publica,
+                plazas: Math.max(1, Math.min(22, Number(datosReserva.plazas) || 4)),
+                nota: String(datosReserva.nota || "").slice(0, 140), creada: ahora(),
+            };
             const reservas = todasLasReservas();
-            reservas.push({ id: nuevoId(), userId: usuario.id, facility, court, date, time, mostrarNombre, creada: Date.now() });
+            reservas.push(reserva);
             guardar(KEYS.reservas, reservas);
+            moverSaldo(usuario.id, -v.importe, "reserva",
+                `${v.instalacion.nombre} · ${v.court} · ${v.date.split("-").reverse().slice(0, 2).join("/")} ${v.time}`, reserva.id);
             avisar("datos-cambiados");
+            return reserva.id;
         }
 
         function comprobarReservaSinSubasta(id) {
@@ -1182,10 +1493,161 @@ const Store = (() => {
             }
         }
 
+        // Con más de 24 h de antelación se devuelve todo (el administrador, siempre)
+        function quitarReserva(id, porAdmin) {
+            const reserva = todasLasReservas().find((r) => r.id === id);
+            if (!reserva) throw new Error("La reserva no existe.");
+            comprobarReservaSinSubasta(id);
+            const antelacion = msMadrid(reserva.date, reserva.time) - ahora();
+            const devuelve = porAdmin || antelacion > MONEDERO.reembolsoHorasAntes * 60 * MINUTO ? (reserva.importe || 0) : 0;
+            guardar(KEYS.reservas, todasLasReservas().filter((r) => r.id !== id));
+            guardar(KEYS.participantes, leer(KEYS.participantes, []).filter((x) => x.reservaId !== id));
+            if (devuelve > 0) moverSaldo(reserva.userId, devuelve, "reembolso", "Reembolso por cancelación", id);
+            avisar("datos-cambiados");
+            return devuelve;
+        }
+
         async function cancelarReserva(id) {
             const usuario = exigirSesion();
-            comprobarReservaSinSubasta(id);
-            guardar(KEYS.reservas, todasLasReservas().filter((r) => !(r.id === id && r.userId === usuario.id)));
+            const reserva = todasLasReservas().find((r) => r.id === id);
+            if (!reserva || reserva.userId !== usuario.id) throw new Error("Solo puedes cancelar tus propias reservas.");
+            return quitarReserva(id, false);
+        }
+
+        async function configurarReserva(id, { publica, plazas, nota }) {
+            const usuario = exigirActivo();
+            const reservas = todasLasReservas();
+            const reserva = reservas.find((r) => r.id === id && r.userId === usuario.id);
+            if (!reserva) throw new Error("Solo puedes cambiar tus propias reservas.");
+            Object.assign(reserva, {
+                publica: Boolean(publica), mostrarNombre: Boolean(publica),
+                plazas: Math.max(1, Math.min(22, Number(plazas) || 4)), nota: String(nota || "").slice(0, 140),
+            });
+            guardar(KEYS.reservas, reservas);
+            avisar("datos-cambiados");
+        }
+
+        // ---------- comunidad ----------
+
+        const todosParticipantes = () => leer(KEYS.participantes, []);
+
+        async function solicitarUnirse(reservaId, mensaje = "") {
+            const usuario = exigirActivo();
+            const reserva = todasLasReservas().find((r) => r.id === reservaId);
+            if (!reserva || !reserva.publica) throw new Error("Esta reserva no está abierta a más jugadores.");
+            if (reserva.userId === usuario.id) throw new Error("Es tu propia reserva.");
+            if (msMadrid(reserva.date, reserva.time) <= ahora()) throw new Error("Esta reserva ya ha empezado.");
+            const lista = todosParticipantes();
+            const aceptados = lista.filter((x) => x.reservaId === reservaId && x.estado === "aceptado").length;
+            if (aceptados + 1 >= (reserva.plazas || 4)) throw new Error("La reserva ya está completa.");
+            const previa = lista.find((x) => x.reservaId === reservaId && x.usuarioId === usuario.id);
+            if (previa && previa.estado !== "rechazado") return;
+            const fila = { reservaId, usuarioId: usuario.id, estado: "pendiente", mensaje: String(mensaje).slice(0, 140), creado: ahora() };
+            guardar(KEYS.participantes, [...lista.filter((x) => x !== previa), fila]);
+            avisar("datos-cambiados");
+        }
+
+        async function responderSolicitud(reservaId, usuarioId, aceptar) {
+            const usuario = exigirActivo();
+            const reserva = todasLasReservas().find((r) => r.id === reservaId);
+            if (!reserva || reserva.userId !== usuario.id) throw new Error("Solo el dueño de la reserva puede responder.");
+            const lista = todosParticipantes();
+            const fila = lista.find((x) => x.reservaId === reservaId && x.usuarioId === usuarioId);
+            if (!fila) throw new Error("No existe esa solicitud.");
+            if (aceptar && lista.filter((x) => x.reservaId === reservaId && x.estado === "aceptado").length + 1 >= (reserva.plazas || 4)) {
+                throw new Error("La reserva ya está completa.");
+            }
+            fila.estado = aceptar ? "aceptado" : "rechazado";
+            guardar(KEYS.participantes, lista);
+            avisar("datos-cambiados");
+        }
+
+        async function salirDeReserva(reservaId) {
+            const usuario = exigirSesion();
+            guardar(KEYS.participantes, todosParticipantes().filter((x) => !(x.reservaId === reservaId && x.usuarioId === usuario.id)));
+            avisar("datos-cambiados");
+        }
+
+        async function actualizarPerfil({ nombre, bio, deporteFavorito }) {
+            const usuario = exigirActivo();
+            cambiarUsuario(usuario.id, {
+                nombre: validarNombre(nombre, getProhibidos()),
+                bio: String(bio || "").trim().slice(0, 280),
+                deporteFavorito: String(deporteFavorito || "").trim().slice(0, 40),
+            });
+            avisar("sesion-cambiada");
+        }
+
+        async function listarOpinionesDe(usuarioId) {
+            return leer(KEYS.opiniones, []).filter((o) => o.usuarioId === usuarioId);
+        }
+
+        // ---------- monedero ----------
+
+        async function recargarSaldo(importe) {
+            const usuario = exigirActivo();
+            importe = Number(importe);
+            if (!(importe >= 1 && importe <= 100000)) throw new Error("Recarga entre 1 y 100.000 CC.");
+            moverSaldo(usuario.id, importe, "recarga", "Recarga de CeutaCoins (simulada)");
+            avisar("datos-cambiados");
+        }
+
+        // ---------- gestores de instalaciones ----------
+
+        const gestoresDe = () => leer(KEYS.gestores, {}); // { usuarioId: [instalacionId…] }
+        const esGestorDe = (usuarioId, instalacionId) => (gestoresDe()[usuarioId] || []).includes(Number(instalacionId));
+
+        async function gestorBloquear({ facility, court, date, time, duracion, nota }) {
+            const usuario = exigirSesion();
+            if (!esGestorDe(usuario.id, facility) && !usuario.admin) throw new Error("Solo los gestores de esta instalación pueden bloquear turnos.");
+            const instalacion = INSTALACIONES.find((i) => i.id === Number(facility));
+            if (!instalacion || !instalacion.pistas.includes(court)) throw new Error("Elige una pista.");
+            const nuevo = { facility: instalacion.id, court, date, time, duracion: Number(duracion) || 60 };
+            if (pistaOcupada(nuevo.facility, court, date, time, nuevo.duracion)) throw new Error("Esa pista ya está reservada en parte de ese horario.");
+            const reservas = todasLasReservas();
+            reservas.push({ ...nuevo, id: nuevoId(), userId: usuario.id, importe: 0, tipo: "bloqueo", publica: false,
+                plazas: 1, nota: String(nota || "Bloqueado por la instalación").slice(0, 140), mostrarNombre: false, creada: ahora() });
+            guardar(KEYS.reservas, reservas);
+            avisar("datos-cambiados");
+        }
+
+        async function gestorDesbloquear(id) {
+            const usuario = exigirSesion();
+            const reserva = todasLasReservas().find((r) => r.id === id && r.tipo === "bloqueo");
+            if (!reserva || (!esGestorDe(usuario.id, reserva.facility) && !usuario.admin)) throw new Error("No se ha podido desbloquear.");
+            guardar(KEYS.reservas, todasLasReservas().filter((r) => r.id !== id));
+            avisar("datos-cambiados");
+        }
+
+        // ---------- pista solidaria ----------
+
+        async function solicitarEntidad(nombre, descripcion) {
+            const usuario = exigirActivo();
+            nombre = String(nombre || "").trim();
+            if (nombre.length < 3) throw new Error("Escribe el nombre de la entidad.");
+            const entidades = leer(KEYS.entidades, {});
+            entidades[usuario.id] = { ...(entidades[usuario.id] || { acreditada: false }), nombre, descripcion: String(descripcion || "").slice(0, 280) };
+            guardar(KEYS.entidades, entidades);
+            avisar("datos-cambiados");
+        }
+
+        async function crearPeticionSolidaria({ deporte, instalacionId, fecha, desde, hasta }) {
+            const usuario = exigirActivo();
+            if (!leer(KEYS.entidades, {})[usuario.id]?.acreditada) throw new Error("Solo las entidades acreditadas pueden pedir pista solidaria.");
+            if (!fecha || fecha < textoMadrid(ahora()).slice(0, 10) || aMinutos(hasta) <= aMinutos(desde)) throw new Error("Revisa la fecha y la franja horaria.");
+            const lista = leer(KEYS.peticiones, []);
+            lista.push({ id: nuevoId(), entidadId: usuario.id, deporte, instalacionId: instalacionId ? Number(instalacionId) : null,
+                fecha, desde, hasta, estado: "pendiente", reservaId: null, creada: ahora() });
+            guardar(KEYS.peticiones, lista);
+            avisar("datos-cambiados");
+        }
+
+        async function cancelarPeticionSolidaria(id) {
+            const usuario = exigirSesion();
+            const lista = leer(KEYS.peticiones, []);
+            const pet = lista.find((x) => x.id === id && x.entidadId === usuario.id && x.estado === "pendiente");
+            if (pet) pet.estado = "cancelada";
+            guardar(KEYS.peticiones, lista);
             avisar("datos-cambiados");
         }
 
@@ -1207,100 +1669,116 @@ const Store = (() => {
         // ---------- datos de ejemplo ----------
 
         async function crearDatosDemo() {
-            if (localStorage.getItem(KEYS.usuarios)) return;
+            if (localStorage.getItem(KEYS.usuarios) && localStorage.getItem(KEYS.version) === VERSION_DEMO) return;
+            // datos de una versión anterior: se empieza de cero
+            Object.values(KEYS).forEach((k) => localStorage.removeItem(k));
 
-            const usuarios = [];
-            for (const demo of USUARIOS_DEMO) {
-                const sal = nuevoId();
-                usuarios.push({
-                    id: nuevoId(),
-                    nombre: demo.nombre,
-                    email: normalizarEmail(demo.email),
-                    sal,
-                    hash: await hashPassword(demo.password, sal),
-                    creado: Date.now(),
-                    admin: Boolean(demo.admin),
-                });
-            }
-            guardar(KEYS.usuarios, usuarios);
-
-            const idPorEmail = (email) => usuarios.find((u) => u.email === normalizarEmail(email)).id;
             const t = Date.now();
+            const dia = (n) => textoMadrid(t + n * 24 * 60 * MINUTO).slice(0, 10);
+            const movimientos = [];
+            const mover = (usuarioId, importe, tipo, concepto, creado, referencia = null) =>
+                movimientos.push({ id: nuevoId(), usuarioId, importe: redondear(importe), tipo, concepto, referencia, creado });
 
-            const reservasSubastadas = [];
+            // usuarios (con su saldo inicial), gestores y entidad solidaria
+            const usuarios = [];
+            const gestores = {};
+            const entidades = {};
+            for (const [n, demo] of USUARIOS_DEMO.entries()) {
+                const sal = nuevoId();
+                const u = {
+                    id: nuevoId(), nombre: demo.nombre, email: normalizarEmail(demo.email), sal,
+                    hash: await hashPassword(demo.password, sal), creado: t - (60 - n * 3) * 24 * 60 * MINUTO,
+                    admin: Boolean(demo.admin), bio: demo.bio || "", deporteFavorito: demo.deporte || "",
+                };
+                usuarios.push(u);
+                mover(u.id, MONEDERO.saldoInicial, "bienvenida", "Saldo inicial de CeutaCoins", u.creado);
+                if (demo.gestiona) gestores[u.id] = demo.gestiona;
+                if (demo.entidad) entidades[u.id] = { ...demo.entidad };
+            }
+            const id = (claveOEmail) => usuarios[USUARIOS_DEMO.findIndex((d) => d.clave === claveOEmail || d.email === claveOEmail)].id;
+
+            // reservas (cobradas) y quién se ha unido
+            const reservas = [];
+            const participantes = [];
+            for (const demo of RESERVAS_DEMO) {
+                const instalacion = INSTALACIONES.find((i) => i.id === demo.instalacionId);
+                const fecha = dia(demo.dias);
+                const importe = precioTurno(instalacion, fecha, demo.hora, demo.duracion);
+                const creada = t + (demo.dias - 3) * 24 * 60 * MINUTO;
+                const r = {
+                    id: nuevoId(), userId: id(demo.usuario), facility: demo.instalacionId, court: demo.pista,
+                    date: fecha, time: demo.hora, duracion: demo.duracion, importe, tipo: "normal",
+                    publica: Boolean(demo.publica), mostrarNombre: Boolean(demo.publica), plazas: demo.plazas || 4,
+                    nota: demo.nota || "", creada,
+                };
+                reservas.push(r);
+                mover(r.userId, -importe, "reserva", `${instalacion.nombre} · ${r.court} · ${fecha.split("-").reverse().slice(0, 2).join("/")} ${r.time}`, creada, r.id);
+                for (const x of demo.participantes || []) {
+                    participantes.push({ reservaId: r.id, usuarioId: id(x.usuario), estado: x.estado, mensaje: x.mensaje || "", creado: creada + 3600000 });
+                }
+            }
+
+            // un bloqueo del gestor (mantenimiento)
+            reservas.push({
+                id: nuevoId(), userId: id("gestor"), facility: 1, court: "Pista 3", date: dia(2), time: "09:00", duracion: 120,
+                importe: 0, tipo: "bloqueo", publica: false, mostrarNombre: false, plazas: 1, nota: "Mantenimiento del césped", creada: t,
+            });
+
+            // reseñas
+            const opiniones = OPINIONES_DEMO.map((o) => ({
+                instalacionId: o.instalacionId, usuarioId: id(o.usuario), puntuacion: o.puntuacion,
+                comentario: o.comentario, creada: t + o.dias * 24 * 60 * MINUTO,
+            }));
+
+            // subastas de reventa (cada una sobre una reserva del vendedor)
             const subastas = SUBASTAS_DEMO.map((demo) => {
                 const instalacion = INSTALACIONES.find((i) => i.id === demo.instalacionId);
-                // Hora del partido redondeada y dentro del horario de las pistas (9:00–22:00)
                 const partido = new Date(t + demo.partidoEnHoras * 60 * MINUTO);
                 partido.setMinutes(0, 0, 0);
-                if (partido.getHours() < 9) {
-                    partido.setHours(9);
-                } else if (partido.getHours() > 22) {
-                    partido.setDate(partido.getDate() + 1);
-                    partido.setHours(9);
-                }
+                if (partido.getHours() < 9) partido.setHours(9);
+                else if (partido.getHours() > 20) { partido.setDate(partido.getDate() + 1); partido.setHours(10); }
+                const fecha = fechaISO(partido);
+                const hora = partido.toTimeString().slice(0, 5);
                 const reserva = {
-                    id: nuevoId(), userId: idPorEmail(demo.vendedor), facility: instalacion.id,
-                    court: instalacion.pistas[0], date: fechaISO(partido), time: partido.toTimeString().slice(0, 5),
-                    mostrarNombre: false, creada: t - 24 * 60 * MINUTO,
+                    id: nuevoId(), userId: id(demo.vendedor), facility: instalacion.id, court: instalacion.pistas[0],
+                    date: fecha, time: hora, duracion: 60, importe: precioTurno(instalacion, fecha, hora, 60), tipo: "normal",
+                    publica: false, mostrarNombre: false, plazas: 4, nota: "", creada: t - 24 * 60 * MINUTO,
                 };
-                reservasSubastadas.push(reserva);
+                if (!reservas.some((r) => solapan(r, reserva))) {
+                    reservas.push(reserva);
+                    mover(reserva.userId, -reserva.importe, "reserva", `${instalacion.nombre} · ${reserva.court}`, reserva.creada, reserva.id);
+                }
                 return {
-                    id: nuevoId(),
-                    tipo: "reventa",
-                    reservaId: reserva.id,
-                    pista: reserva.court,
-                    comisionPct: FACTURACION_DEFECTO.comisionSubastas,
-                    ipsiPct: FACTURACION_DEFECTO.ipsi,
-                    cerrada: false,
-                    instalacionId: instalacion.id,
-                    titulo: instalacion.nombre,
-                    deporte: instalacion.deporte,
-                    fecha: fechaISO(partido),
-                    hora: partido.toTimeString().slice(0, 5),
-                    descripcion: demo.descripcion,
-                    precioSalida: demo.precioSalida,
-                    incremento: demo.incremento,
-                    fin: t + demo.terminaEnMin * MINUTO,
-                    vendedorId: idPorEmail(demo.vendedor),
-                    pujas: demo.pujas.map((p, i) => ({
-                        id: nuevoId(),
-                        usuarioId: idPorEmail(p.email),
-                        cantidad: p.cantidad,
-                        fecha: t - (demo.pujas.length - i) * 5 * MINUTO,
-                    })),
-                    cancelada: false,
-                    creada: t,
+                    id: nuevoId(), tipo: "reventa", reservaId: reserva.id, pista: reserva.court,
+                    comisionPct: FACTURACION_DEFECTO.comisionSubastas, ipsiPct: FACTURACION_DEFECTO.ipsi, cerrada: false,
+                    instalacionId: instalacion.id, titulo: instalacion.nombre, deporte: instalacion.deporte,
+                    fecha, hora, descripcion: demo.descripcion, precioSalida: demo.precioSalida, incremento: demo.incremento,
+                    fin: t + demo.terminaEnMin * MINUTO, vendedorId: id(demo.vendedor),
+                    pujas: demo.pujas.map((x, k) => ({ id: nuevoId(), usuarioId: id(x.email), cantidad: x.cantidad, fecha: t - (demo.pujas.length - k) * 5 * MINUTO })),
+                    cancelada: false, creada: t - 60 * MINUTO,
                 };
             });
-            guardar(KEYS.subastas, subastas);
 
-            guardar(KEYS.reservas, [...reservasSubastadas, ...RESERVAS_DEMO.map((demo) => {
-                const dia = new Date(t + demo.diasDesdeHoy * 24 * 60 * MINUTO);
-                return {
-                    id: nuevoId(), userId: idPorEmail(demo.email), facility: demo.instalacionId,
-                    court: demo.pista, date: fechaISO(dia), time: demo.hora, mostrarNombre: false,
-                    creada: dia.getTime() - 2 * 24 * 60 * MINUTO,
-                };
-            })]);
-        }
+            // una petición solidaria pendiente para hoy
+            const peticiones = [{
+                id: nuevoId(), entidadId: id("entidad"), deporte: "Pádel", instalacionId: null, fecha: dia(0),
+                desde: "16:00", hasta: "20:00", estado: "pendiente", reservaId: null, creada: t,
+            }];
 
-        // Navegadores con datos de antes de existir la cuenta de administrador de prueba
-        async function asegurarAdminDemo() {
-            const usuarios = getUsuarios();
-            const demo = USUARIOS_DEMO.find((u) => u.admin);
-            if (!demo || usuarios.some((u) => u.email === demo.email)) return;
-            const sal = nuevoId();
-            usuarios.push({
-                id: nuevoId(), nombre: demo.nombre, email: demo.email, sal,
-                hash: await hashPassword(demo.password, sal), creado: Date.now(), admin: true,
-            });
             guardar(KEYS.usuarios, usuarios);
+            guardar(KEYS.reservas, reservas);
+            guardar(KEYS.participantes, participantes);
+            guardar(KEYS.opiniones, opiniones);
+            guardar(KEYS.subastas, subastas);
+            guardar(KEYS.movimientos, movimientos);
+            guardar(KEYS.gestores, gestores);
+            guardar(KEYS.entidades, entidades);
+            guardar(KEYS.peticiones, peticiones);
+            localStorage.setItem(KEYS.version, VERSION_DEMO);
         }
 
         async function inicializar() {
             await crearDatosDemo();
-            await asegurarAdminDemo();
             // Cambios hechos en otra pestaña del mismo navegador
             window.addEventListener("storage", (event) => {
                 if (event.key === KEYS.sesion) avisar("sesion-cambiada");
@@ -1335,7 +1813,9 @@ const Store = (() => {
                 id: u.id, nombre: u.nombre, email: u.email, creado: u.creado, admin: Boolean(u.admin),
                 bloqueado: Boolean(u.bloqueado), motivoBloqueo: u.motivoBloqueo || "",
                 nombreRechazado: u.nombreRechazado || "",
-                reservas: reservas.filter((r) => r.userId === u.id).length,
+                saldo: saldoDe(u.id), gestiona: gestoresDe()[u.id] || [],
+                entidad: leer(KEYS.entidades, {})[u.id]?.nombre || "", entidadAcreditada: Boolean(leer(KEYS.entidades, {})[u.id]?.acreditada),
+                reservas: reservas.filter((r) => r.userId === u.id && (r.tipo || "normal") === "normal").length,
                 subastas: subastas.filter((s) => s.vendedorId === u.id).length,
                 pujas: subastas.reduce((n, s) => n + s.pujas.filter((p) => p.usuarioId === u.id).length, 0),
             })).sort((a, b) => b.creado - a.creado);
@@ -1353,9 +1833,50 @@ const Store = (() => {
 
         async function adminBorrarReserva(id) {
             exigirAdmin();
-            comprobarReservaSinSubasta(id);
-            guardar(KEYS.reservas, todasLasReservas().filter((r) => r.id !== id));
+            return quitarReserva(id, true);
+        }
+
+        async function adminBonificar(usuarioId, importe, concepto) {
+            exigirAdmin();
+            importe = Number(importe);
+            if (!importe || Math.abs(importe) > 1e9) throw new Error("Importe no válido.");
+            moverSaldo(usuarioId, importe, "bonificacion", String(concepto || "").trim() || "Bonificación de CeutaPlay");
             avisar("datos-cambiados");
+        }
+
+        async function adminFijarSaldo(usuarioId, nuevoSaldo, concepto) {
+            exigirAdmin();
+            nuevoSaldo = Number(nuevoSaldo);
+            if (!(nuevoSaldo >= 0 && nuevoSaldo <= 1e9)) throw new Error("El saldo tiene que estar entre 0 y 1.000.000.000 CC.");
+            const diferencia = redondear(nuevoSaldo - saldoDe(usuarioId));
+            if (diferencia) moverSaldo(usuarioId, diferencia, "ajuste", String(concepto || "").trim() || "Ajuste de saldo por el administrador");
+            avisar("datos-cambiados");
+        }
+
+        async function adminAsignarGestor(usuarioId, instalacionId, asignar) {
+            exigirAdmin();
+            const mapa = gestoresDe();
+            const lista = new Set(mapa[usuarioId] || []);
+            if (asignar) lista.add(Number(instalacionId)); else lista.delete(Number(instalacionId));
+            mapa[usuarioId] = [...lista].sort((a, b) => a - b);
+            guardar(KEYS.gestores, mapa);
+            avisar("datos-cambiados");
+        }
+
+        async function adminAcreditarEntidad(usuarioId, acreditar) {
+            exigirAdmin();
+            const entidades = leer(KEYS.entidades, {});
+            if (!entidades[usuarioId]) throw new Error("Ese usuario no ha solicitado ser entidad solidaria.");
+            entidades[usuarioId].acreditada = Boolean(acreditar);
+            guardar(KEYS.entidades, entidades);
+            avisar("datos-cambiados");
+        }
+
+        async function adminListarPeticionesSolidarias() {
+            exigirAdmin();
+            const entidades = leer(KEYS.entidades, {});
+            return leer(KEYS.peticiones, []).map((x) => ({ ...x, entidad: entidades[x.entidadId]?.nombre || "—" }))
+                .sort((a, b) => b.fecha.localeCompare(a.fecha));
         }
 
         function cambiarUsuario(usuarioId, cambios) {
@@ -1450,6 +1971,30 @@ const Store = (() => {
             reservasParaAgenda: () => usuarioActual() ? todasLasReservas() : [],
             todasLasReservas,
             turnosOcupados: todasLasReservas,
+            configurarReserva, solicitarUnirse, responderSolicitud, salirDeReserva, actualizarPerfil, listarOpinionesDe,
+            participantes: () => {
+                const u = usuarioActual();
+                if (!u) return [];
+                const mias = new Set(todasLasReservas().filter((r) => r.userId === u.id).map((r) => r.id));
+                const publicas = new Set(todasLasReservas().filter((r) => r.publica).map((r) => r.id));
+                return todosParticipantes().filter((x) => x.usuarioId === u.id || mias.has(x.reservaId) ||
+                    (x.estado === "aceptado" && publicas.has(x.reservaId)));
+            },
+            movimientos: () => {
+                const u = usuarioActual();
+                return u ? todosMovimientos().filter((m) => m.usuarioId === u.id).sort((a, b) => b.creado - a.creado) : [];
+            },
+            saldo: () => (usuarioActual() ? saldoDe(usuarioActual().id) : 0),
+            recargarSaldo,
+            gestiona: () => (usuarioActual() ? gestoresDe()[usuarioActual().id] || [] : []),
+            gestorBloquear, gestorDesbloquear,
+            entidad: () => (usuarioActual() ? leer(KEYS.entidades, {})[usuarioActual().id] || null : null),
+            peticionesSolidarias: () => {
+                const u = usuarioActual();
+                return u ? leer(KEYS.peticiones, []).filter((x) => x.entidadId === u.id).sort((a, b) => b.fecha.localeCompare(a.fecha)) : [];
+            },
+            solicitarEntidad, crearPeticionSolidaria, cancelarPeticionSolidaria,
+            adminBonificar, adminFijarSaldo, adminAsignarGestor, adminAcreditarEntidad, adminListarPeticionesSolidarias,
             crearSubastaReventa, pujarHueco, cerrarSubastas,
             tarifasSubastas: () => tarifasSubastas(),
             permiteMostrarNombre: () => true,
@@ -1498,7 +2043,7 @@ const Store = (() => {
             .filter((s) => s.tipo === "automatica" && !s.cancelada && !s.cerrada)
             .map((s) => ({
                 id: `subasta-${s.id}`, subastaId: s.id, userId: null, enSubasta: true,
-                facility: Number(s.instalacionId), court: s.pista, date: s.fecha, time: s.hora,
+                facility: Number(s.instalacionId), court: s.pista, date: s.fecha, time: s.hora, duracion: 60,
             }));
     }
 
@@ -1507,8 +2052,35 @@ const Store = (() => {
         return backend.usuarioActual() ? [...reservas, ...turnosEnSubasta()] : reservas;
     }
 
-    const pistaOcupada = (facility, court, date, time) => backend.pistaOcupada(facility, court, date, time) ||
-        turnosEnSubasta().some((r) => r.facility === facility && r.court === court && r.date === date && r.time === time);
+    const pistaOcupada = (facility, court, date, time, duracion = 60) => backend.pistaOcupada(facility, court, date, time, duracion) ||
+        turnosEnSubasta().some((r) => solapan(r, { facility, court, date, time, duracion }));
+
+    // ---------- comunidad: puntos a partir de la actividad visible ----------
+    function puntosDe(usuarioId) {
+        const ahoraMs = backend.ahora();
+        const jugadas = backend.todasLasReservas().filter((r) => r.userId === usuarioId && (r.tipo || "normal") === "normal" &&
+            msMadrid(r.date, r.time) < ahoraMs).length;
+        const unidas = backend.participantes().filter((x) => x.usuarioId === usuarioId && x.estado === "aceptado").length;
+        const subastas = backend.listarSubastas();
+        const pujas = subastas.reduce((n, s) => n + s.pujas.filter((x) => x.usuarioId === usuarioId).length, 0);
+        const ganadas = subastas.filter((s) => s.ganador && s.ganador.id === usuarioId).length;
+        const vendidas = subastas.filter((s) => s.vendedorId === usuarioId && s.ganador).length;
+        const puntos = jugadas * 10 + unidas * 6 + pujas * 1 + ganadas * 8 + vendidas * 4;
+        return { ...nivelDe(puntos), detalle: { jugadas, unidas, pujas, ganadas, vendidas } };
+    }
+
+    // Reservas abiertas (públicas) futuras a las que se puede pedir unirse
+    function reservasAbiertas() {
+        const ahoraMs = backend.ahora();
+        const participantes = backend.participantes();
+        return backend.todasLasReservas()
+            .filter((r) => r.publica && (r.tipo || "normal") === "normal" && msMadrid(r.date, r.time) > ahoraMs)
+            .map((r) => {
+                const aceptados = participantes.filter((x) => x.reservaId === r.id && x.estado === "aceptado");
+                return { ...r, aceptados, libres: Math.max(0, (r.plazas || 4) - 1 - aceptados.length) };
+            })
+            .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
+    }
 
     // Adjudicar las subastas terminadas (una llamada a la vez)
     let cerrando = null;
@@ -1530,6 +2102,6 @@ const Store = (() => {
     return {
         ...backend, modo, inicializar,
         listarHuecosAutomaticos, getSubasta, pujar, reservasParaAgenda, pistaOcupada, cerrarSubastas,
-        msMadrid,
+        msMadrid, textoMadrid, solapan, puntosDe, nivelDe, NIVELES, reservasAbiertas,
     };
 })();

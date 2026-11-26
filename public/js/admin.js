@@ -105,10 +105,11 @@ function movimientos() {
     const lista = [];
     for (const r of Store.todasLasReservas()) {
         const inst = instalacion(r.facility);
-        if (!inst) continue;
+        // los bloqueos de la instalación y las pistas solidarias no facturan
+        if (!inst || (r.tipo || "normal") !== "normal" || r.importe === 0) continue;
         lista.push({
             fecha: r.date, hora: r.time, tipo: "Reserva", instalacionId: inst.id,
-            cliente: nombreUsuario(r.userId), importe: inst.precioPrueba || 0,
+            cliente: nombreUsuario(r.userId), importe: r.importe ?? precioTurno(inst, r.date, r.time, r.duracion || 60),
             jugada: `${r.date}T${r.time}` <= ahora,
         });
     }
@@ -409,7 +410,7 @@ function pintarReservas() {
             <td>${formatoDia(r.date)}</td>
             <td>${esc(r.time)}</td>
             <td>${esc(r.usuario)}</td>
-            <td class="num">${dinero(r.inst?.precioPrueba)}</td>
+            <td class="num">${r.importe != null ? formatoCC(r.importe) : "—"}</td>
             <td>${boton("borrar-reserva", "Borrar", { id: r.id })}</td>
         </tr>`);
     $("admin-reservas").innerHTML = filas.join("") || filaVacia(7, "No hay reservas que coincidan.");
@@ -448,16 +449,18 @@ function pintarUsuarios() {
                 <td class="num">${u.reservas}</td>
                 <td class="num">${u.subastas}</td>
                 <td class="num">${u.pujas}</td>
+                <td class="num">${u.saldo != null ? formatoCC(u.saldo) : "—"}</td>
                 <td>${estadoCuenta}${u.bloqueado && u.motivoBloqueo ? `<br><small>${esc(u.motivoBloqueo)}</small>` : ""}</td>
                 <td><div class="admin-acciones">
                     ${boton("renombrar", "Renombrar", { id: u.id }, "admin-action admin-action-neutral")}
+                    ${boton("saldo", "🪙 Saldo", { id: u.id }, "admin-action admin-action-neutral")}
                     ${u.admin || u.id === yo.id ? ""
                         : u.bloqueado ? boton("reactivar", "Reactivar", { id: u.id }, "admin-action admin-action-ok")
                         : boton("suspender", "Suspender", { id: u.id })}
                 </div></td>
             </tr>`;
         });
-    $("admin-usuarios").innerHTML = filas.join("") || filaVacia(8, "No hay usuarios que coincidan.");
+    $("admin-usuarios").innerHTML = filas.join("") || filaVacia(9, "No hay usuarios que coincidan.");
 }
 
 
@@ -810,6 +813,26 @@ document.querySelector(".admin-page").addEventListener("click", async (event) =>
             if (motivo === null) return;
             await Store.adminBloquearUsuario(id, true, motivo);
             UI.toast(`Cuenta de ${usuario.nombre} suspendida.`);
+            recargarUsuarios = true;
+            break;
+        }
+        case "saldo": {
+            const actual = usuario.saldo ?? 0;
+            const respuesta = prompt(
+                `Saldo de ${usuario.nombre}: ${formatoCC(actual)}
+
+` +
+                "Escribe el nuevo saldo (p. ej. 2000000), o una cantidad con + o − para sumar o restar (p. ej. +500 o −200):",
+                String(actual));
+            if (respuesta === null || !respuesta.trim()) return;
+            const texto = respuesta.trim().replace(/\./g, "").replace(",", ".").replace("−", "-");
+            const motivo = prompt("Motivo (aparecerá en su historial de movimientos):", "Ajuste del administrador") ?? "";
+            if (/^[+-]/.test(texto)) {
+                await Store.adminBonificar(id, Number(texto), motivo || "Bonificación de CeutaPlay");
+            } else {
+                await Store.adminFijarSaldo(id, Number(texto), motivo);
+            }
+            UI.toast(`Saldo de ${usuario.nombre} actualizado.`);
             recargarUsuarios = true;
             break;
         }

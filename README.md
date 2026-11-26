@@ -35,7 +35,9 @@ TrabajoGabi/
 ├── supabase/
 │   ├── schema.sql            ← base de datos del servidor (pegar en Supabase)
 │   ├── admin.sql             ← permisos de administrador y panel admin
-│   ├── subastas.sql          ← subastas de última hora y reventa (ejecutar después de admin.sql)
+│   ├── plataforma.sql        ← reservas por tramos, CeutaCoins, privacidad, subastas, comunidad, gestores y RSC
+│   ├── seed.sql              ← datos ficticios para el servidor de pruebas (opcional)
+│   ├── generar-seed.js       ← genera seed.sql a partir de public/js/data.js
 │   ├── opiniones.sql         ← actualización: opiniones compartidas
 │   └── reservas-sociales.sql ← actualización: mostrar nombre en la agenda
 ├── public/                   ← TODO lo que hay aquí es lo que se publica
@@ -68,6 +70,28 @@ TrabajoGabi/
 
 ---
 
+## 🆕 Fase 1: reservas por tramos, CeutaCoins y privacidad
+
+- **Reservas de 30 min a 3 h**, que empiezan cada 30 min. La disponibilidad tiene en cuenta los solapes y la tabla de horarios del día va por tramos de 30 min.
+- **Precio por franja:** el precio de cada instalación es el de hora punta; en hora valle (lunes a viernes antes de las 17:00) es un 20 % más barato.
+- **Simulacro de pago con CeutaCoins (CC)**, 1 CC = 1 €. Cada cuenta empieza con **1.000.000 CC**. Las reservas y las subastas se pagan con CC; quien revende su reserva cobra en CC; cancelar con más de 24 h devuelve todo. En *Mi perfil → Mi monedero* están el saldo, los movimientos y la recarga simulada.
+- **El administrador controla el saldo:** en *Panel admin → Usuarios → 🪙 Saldo* puede fijar el saldo de cualquier cuenta (también la suya) o sumar y restar (`+500`, `-200`). Cada cambio queda en el historial del usuario.
+- **Privacidad:** cada usuario solo ve sus reservas y las abiertas; las del resto aparecen como «Ocupada».
+- **Reservas abiertas:** al reservar se puede abrir la reserva para que otros pidan unirse (el dueño acepta o rechaza en *Mis reservas*).
+- **Instalaciones públicas (ICD):** los campos municipales ya no se reservan en CeutaPlay; se redirige al Instituto Ceutí de Deportes (`gestion: "icd"` en `data.js`, enlace en `URL_ICD`).
+- **Reventa hasta el inicio:** al subastar una reserva, la subasta puede durar como máximo hasta la hora en que empieza.
+- **Contraseñas más seguras:** mínimo 8 caracteres, con letras y números. (En Supabase conviene poner también la longitud mínima en *Authentication → Providers → Email*).
+- **Datos ficticios:** usuarios con biografía, reservas pasadas y futuras, reseñas, jugadores unidos a reservas, subastas, un gestor de instalación y una entidad solidaria.
+
+### 🧪 Cuentas de prueba (contraseña `demo1234`)
+
+| Cuenta | Para probar |
+|---|---|
+| `ana@ceutaplay.es`, `karim@`, `lucia@`, `paula@`, `sara@`, `youssef@`, `luis@`, `marta@`, `hamza@`, `ivan@`, `nora@` (todas `@ceutaplay.es`) | Jugadores con reservas, reseñas y reservas abiertas |
+| `gestor@ceutaplay.es` | Gestor de Pádel y Tenis La Marina |
+| `entidad@ceutaplay.es` | Entidad solidaria acreditada (pista solidaria) |
+| `admin@ceutaplay.es` | Administrador (solo en modo local; en el servidor es la cuenta real con su contraseña privada) |
+
 ## 🔐 Cuentas, 🔥 subastas y 🎾 reservas
 
 - **Registro e inicio de sesión** desde la ventana de la página principal o desde `login.html` / `registro.html` (son las mismas cuentas).
@@ -91,7 +115,7 @@ TrabajoGabi/
 
 ### 🛡️ Cuenta de administrador
 
-1. Ejecuta [`supabase/admin.sql`](supabase/admin.sql) y después [`supabase/subastas.sql`](supabase/subastas.sql) en el SQL Editor de Supabase (y **vuelve a ejecutarlo** cada vez que cambie: crea las tablas de nombres prohibidos, moderación y ajustes de facturación). Marca como administrador a `admin@ceutaplay.es`; para añadir otro, cambia el correo de la última línea y vuelve a ejecutarla.
+1. En el SQL Editor de Supabase ejecuta, en este orden: [`supabase/admin.sql`](supabase/admin.sql) y [`supabase/plataforma.sql`](supabase/plataforma.sql) (y **vuelve a ejecutarlos** cada vez que cambien). Para tener datos de prueba en el servidor, ejecuta también [`supabase/seed.sql`](supabase/seed.sql) (crea cuentas ficticias con la contraseña `demo1234`; úsalo solo en un proyecto de pruebas). Marca como administrador a `admin@ceutaplay.es`; para añadir otro, cambia el correo de la última línea y vuelve a ejecutarla.
 2. La contraseña **no está en el repositorio**: se guarda en `privado/credenciales-admin.md`, que está en el `.gitignore`. Pídesela a quien gestione el proyecto.
 
 ### Dos modos de funcionamiento
@@ -99,7 +123,7 @@ TrabajoGabi/
 | Modo | Cuándo | Qué pasa |
 |------|--------|----------|
 | 🟢 **Servidor** | `public/js/config.js` tiene la URL y la clave de Supabase | Todos los dispositivos ven las mismas cuentas, subastas, pujas y reservas, **en tiempo real**. Las reglas se comprueban en el servidor. |
-| 🟡 **Local** | `config.js` vacío | Todo se guarda en el navegador. Útil para probar sin servidor; trae cuentas de prueba (`ana@ceutaplay.es`, `luis@ceutaplay.es`, `marta@ceutaplay.es` y el administrador `admin@ceutaplay.es`, contraseña `demo1234`) y algunas reservas de ejemplo para el panel de facturación. |
+| 🟡 **Local** | `config.js` vacío | Todo se guarda en el navegador. Útil para probar sin servidor; trae todas las cuentas de prueba de la tabla de arriba (contraseña `demo1234`) con sus reservas, reseñas y subastas de ejemplo. |
 
 El pie de la página principal indica en qué modo está funcionando.
 

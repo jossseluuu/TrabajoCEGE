@@ -8,12 +8,12 @@ function bookingStart(booking) {
 
 function bookingEnd(booking) {
     const start = Date.parse(`${bookingStart(booking)}:00Z`);
-    return new Date(start + 60 * 60 * 1000).toISOString().slice(0, 16);
+    return new Date(start + (booking.duracion || 60) * 60 * 1000).toISOString().slice(0, 16);
 }
 
 function bookingDescription(booking) {
     const date = booking.date.split("-").reverse().join("/");
-    return `${booking.facilityName} · ${booking.court} · ${date}, ${booking.time}`;
+    return `${booking.facilityName} · ${booking.court} · ${date}, ${booking.time} (${textoDuracion(booking.duracion || 60)})`;
 }
 
 function showBookingList(id, bookings, emptyMessage) {
@@ -46,7 +46,7 @@ function showBookingSummary() {
 
 function auctionDescription(auction) {
     const date = auction.fecha.split("-").reverse().join("/");
-    return `${auction.titulo} · ${date}, ${auction.hora} · ${auction.precioActual} €`;
+    return `${auction.titulo} · ${date}, ${auction.hora} · ${auction.precioActual} CC`;
 }
 
 function showAuctionSummary(usuario) {
@@ -77,6 +77,42 @@ function showList(id, texts, emptyMessage) {
     document.getElementById(id).replaceChildren(...items);
 }
 
+const fechaMovimiento = new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+function showWallet() {
+    document.getElementById("wallet-balance").textContent = formatoCC(Store.saldo());
+    const moves = Store.movimientos().slice(0, 30);
+    const items = moves.map((m) => {
+        const item = document.createElement("li");
+        const concept = document.createElement("span");
+        concept.textContent = `${fechaMovimiento.format(new Date(m.creado))} · ${m.concepto}`;
+        const amount = document.createElement("strong");
+        amount.className = m.importe >= 0 ? "move-in" : "move-out";
+        amount.textContent = `${m.importe >= 0 ? "+" : "−"}${formatoCC(Math.abs(m.importe))}`;
+        item.append(concept, amount);
+        return item;
+    });
+    if (!items.length) {
+        const empty = document.createElement("li");
+        empty.textContent = "Todavía no hay movimientos.";
+        items.push(empty);
+    }
+    document.getElementById("wallet-moves").replaceChildren(...items);
+}
+
+document.querySelector(".wallet-actions").addEventListener("click", async (event) => {
+    const button = event.target.closest("[data-recarga]");
+    if (!button) return;
+    button.disabled = true;
+    try {
+        await Store.recargarSaldo(Number(button.dataset.recarga));
+    } catch (error) {
+        alert(error.message);
+    } finally {
+        button.disabled = false;
+    }
+});
+
 function showProfile() {
     if (!requireLogin()) {
         profilePanel.hidden = true;
@@ -86,6 +122,7 @@ function showProfile() {
     profileName.textContent = `Hola, ${usuario.nombre}`;
     profileName.hidden = false;
     profileEmail.textContent = usuario.email;
+    showWallet();
     showBookingSummary();
     showAuctionSummary(usuario);
     profilePanel.hidden = false;
