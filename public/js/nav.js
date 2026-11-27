@@ -49,12 +49,20 @@ const Nav = (() => {
         return encodeURIComponent(pagina + location.search);
     }
 
+    function botonTema() {
+        if (typeof Tema === "undefined") return "";
+        const oscuro = Tema.actual() === "oscuro";
+        return `<button type="button" class="nav-bell nav-theme" data-nav="tema"
+                    aria-label="${oscuro ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}"
+                    title="${oscuro ? "Modo claro" : "Modo oscuro"}">${oscuro ? "☀️" : "🌙"}</button>`;
+    }
+
     function acciones(usuario) {
-        if (!listo) return `<span class="nav-loading" aria-hidden="true"></span>`;
+        if (!listo) return `${botonTema()}<span class="nav-loading" aria-hidden="true"></span>`;
 
         if (usuario) {
             const inicial = esc((usuario.nombre || "?").trim().charAt(0).toUpperCase());
-            return `
+            return `${botonTema()}
                 <button type="button" class="nav-bell" data-nav="avisos" aria-label="Avisos" aria-expanded="false"
                         aria-controls="avisos-panel">🔔<span class="bell-count" hidden></span></button>
                 <a class="user-chip" href="perfil.html" title="Mi perfil (${esc(usuario.email)})"
@@ -68,12 +76,12 @@ const Nav = (() => {
 
         // En la portada existe la ventana de login (auth.js)
         if (document.getElementById("auth-modal")) {
-            return `
+            return `${botonTema()}
                 <button type="button" class="login-btn" data-accion="login">Iniciar sesión</button>
                 <button type="button" class="register-btn" data-accion="registro">Registrarse</button>`;
         }
         const volver = ["login", "registro"].includes(paginaActual()) ? location.search : `?volver=${volverA()}`;
-        return `
+        return `${botonTema()}
             <a class="login-btn" href="login.html${volver}" ${paginaActual() === "login" ? 'aria-current="page"' : ""}>Iniciar sesión</a>
             <a class="register-btn" href="registro.html${volver}">Registrarse</a>`;
     }
@@ -106,7 +114,58 @@ const Nav = (() => {
         if ((typeof UI !== "undefined")) UI.toast("Has cerrado sesión.");
     }
 
+    // ---------- pie común: enlaces, instalar la app ----------
+
+    let instalacion = null; // evento beforeinstallprompt (Chrome, Edge, Android)
+
+    function pie() {
+        let footer = document.querySelector("footer.footer");
+        if (!footer) {
+            footer = document.createElement("footer");
+            footer.className = "footer footer-mini";
+            footer.innerHTML = `<div class="container footer-content">
+                <a href="index.html" class="logo">CEUTA<span>PLAY</span></a>
+                <p>© ${new Date().getFullYear()} CeutaPlay · Ceuta</p></div>`;
+            document.body.append(footer);
+        }
+        if (footer.querySelector(".footer-links")) return;
+        const enlaces = document.createElement("nav");
+        enlaces.className = "footer-links container";
+        enlaces.setAttribute("aria-label", "Información");
+        enlaces.innerHTML = `
+            <a href="como-funciona.html">Cómo funciona</a>
+            <a href="legal.html#privacidad">Privacidad</a>
+            <a href="legal.html#cookies">Cookies</a>
+            <a href="legal.html#condiciones">Condiciones de uso</a>
+            <a href="legal.html#cancelaciones">Cancelaciones y reventa</a>
+            <button type="button" class="footer-install" data-nav="instalar" hidden>📲 Instalar app</button>
+            <span class="footer-lang" id="footer-lang"></span>`;
+        footer.append(enlaces);
+        enlaces.addEventListener("click", async (e) => {
+            if (!e.target.closest("[data-nav=instalar]") || !instalacion) return;
+            instalacion.prompt();
+            await instalacion.userChoice.catch(() => null);
+            instalacion = null;
+            enlaces.querySelector("[data-nav=instalar]").hidden = true;
+        });
+        if (typeof I18n !== "undefined") I18n.selector(document.getElementById("footer-lang"));
+    }
+
+    function registrarApp() {
+        if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+            navigator.serviceWorker.register("sw.js").catch((e) => console.warn("Service worker:", e));
+        }
+        window.addEventListener("beforeinstallprompt", (e) => {
+            e.preventDefault();
+            instalacion = e;
+            const boton = document.querySelector("[data-nav=instalar]");
+            if (boton) boton.hidden = false;
+        });
+    }
+
     function iniciar() {
+        pie();
+        registrarApp();
         header = document.getElementById("site-header");
         if (!header) return;
         pintar();
@@ -114,6 +173,11 @@ const Nav = (() => {
         header.addEventListener("click", (event) => {
             const boton = event.target.closest("[data-nav]");
             if (boton && boton.dataset.nav === "logout") cerrarSesion();
+            if (boton && boton.dataset.nav === "tema" && typeof Tema !== "undefined") {
+                Tema.alternar();
+                pintar();
+                header.querySelector("[data-nav=tema]")?.focus();
+            }
             if (boton && boton.dataset.nav === "avisos" && (typeof Avisos !== "undefined")) Avisos.alternar();
             if (boton && boton.dataset.nav === "menu") {
                 const abierto = header.classList.toggle("menu-abierto");

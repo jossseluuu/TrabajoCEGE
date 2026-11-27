@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cómo funciona | CeutaPlay</title>
+    <meta name="description" content="Cómo reservar pistas, pujar en subastas de última hora y unirte a partidos en CeutaPlay, la plataforma deportiva de Ceuta.">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%8E%BE%3C/text%3E%3C/svg%3E">
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="js/tema.js"></script>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="apple-touch-icon" href="img/app/apple-touch-icon.png">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="js/config.js" defer></script>
+    <script src="js/data.js" defer></script>
+    <script src="js/store.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/i18n.js" defer></script>
+    <script src="js/nav.js" defer></script>
+    <script src="js/viento.js" defer></script>
+    <script src="js/avisos.js" defer></script>
+</head>
+<body>
+    <header class="navbar" id="site-header" data-pagina="como-funciona"></header>
+    <main class="container info-page" aria-labelledby="info-title">
+        <header class="info-hero">
+            <p class="section-label">GUÍA RÁPIDA</p>
+            <h1 id="info-title">Cómo funciona CeutaPlay</h1>
+            <p data-i18n="cf-intro">Todas las instalaciones deportivas de Ceuta en un mismo sitio: reservas privadas, campos municipales del ICD, subastas de última hora y una comunidad para encontrar gente con la que jugar.</p>
+            <p class="info-actions"><a class="register-btn" href="reservas.html">Reservar una pista</a> <a class="login-btn" href="index.html#subastas">Ver subastas</a></p>
+        </header>
+
+        <section class="info-section" aria-labelledby="pasos-title">
+            <h2 id="pasos-title">Para jugadores, en 5 pasos</h2>
+            <ol class="info-steps">
+                <li><span aria-hidden="true">👤</span><div><h3>Crea tu cuenta</h3><p data-i18n="cf-paso1">Con tu correo y una contraseña de al menos 8 caracteres. Recibes <strong>1.000.000 CeutaCoins (CC)</strong> para probar la plataforma: es un simulacro de pago, 1 CC = 1 €.</p></div></li>
+                <li><span aria-hidden="true">📅</span><div><h3>Reserva</h3><p data-i18n="cf-paso2">Elige instalación, día, hora de inicio (en punto o a y media) y cuánto quieres jugar: de 30 min a 3 h. La hora valle (lunes a viernes antes de las 17:00) es un 20 % más barata.</p></div></li>
+                <li><span aria-hidden="true">🙋</span><div><h3>Abre tu partido</h3><p data-i18n="cf-paso3">Marca «Reserva abierta» y otros jugadores podrán pedir unirse desde la <a href="comunidad.html">comunidad</a>. Tú decides a quién aceptas.</p></div></li>
+                <li><span aria-hidden="true">⚡</span><div><h3>Aprovecha la última hora</h3><p data-i18n="cf-paso4">Las pistas de pádel y tenis que siguen libres 12 h antes salen solas a subasta a <strong>mitad de precio</strong>. La subasta se cierra 15 min antes y el ganador se queda la reserva.</p></div></li>
+                <li><span aria-hidden="true">🔁</span><div><h3>¿No puedes ir? Revéndela</h3><p data-i18n="cf-paso5">Subasta tu reserva hasta la hora en que empieza. Cobras el precio final menos la comisión de CeutaPlay. Si cancelas con más de 24 h, te devolvemos todo.</p></div></li>
+            </ol>
+        </section>
+
+        <section class="info-grid" aria-label="Más funciones">
+            <article class="info-card">
+                <h2>🏛️ Instalaciones municipales</h2>
+                <p data-i18n="cf-icd">Los campos y pistas del Instituto Ceutí de Deportes también se reservan aquí. CeutaPlay hace de intermediario: pagas en la app y tramitamos la reserva con el ICD. <em>En esta versión de prueba la tramitación es simulada.</em></p>
+            </article>
+            <article class="info-card">
+                <h2>🏅 Niveles e insignias</h2>
+                <p data-i18n="cf-niveles">Ganas puntos por jugar, unirte a partidos de otros, ganar subastas y opinar sobre las instalaciones. Sube de 🌱 Novato a 🏆 Leyenda de Ceuta y consigue insignias.</p>
+            </article>
+            <article class="info-card">
+                <h2>🔔 Avisos</h2>
+                <p data-i18n="cf-avisos">La campana del menú te avisa cuando te superan en una subasta, cuando alguien quiere unirse a tu partido, cuando te aceptan o cuando hay pistas de tu deporte a mitad de precio.</p>
+            </article>
+            <article class="info-card">
+                <h2>🌬️ Viento para la náutica</h2>
+                <p data-i18n="cf-viento">Kayak, paddle surf y piragüismo muestran el parte de viento por horas: si sopla levante o poniente, qué bahía conviene y cuál es la próxima hora buena para salir.</p>
+            </article>
+        </section>
+
+        <section class="info-section" aria-labelledby="clubes-title">
+            <h2 id="clubes-title">Para clubes e instalaciones</h2>
+            <div class="info-grid">
+                <article class="info-card"><h3>Sin coste fijo</h3><p data-i18n="cf-coste">Adherirse es gratis: te configuramos los horarios. CeutaPlay cobra una comisión del <strong>10 %</strong> por reserva y del <strong>15 %</strong> por subasta adjudicada (más el IPSI de esa comisión).</p></article>
+                <article class="info-card"><h3>Panel del gestor</h3><p data-i18n="cf-gestor">Ves todas tus reservas, bloqueas pistas para mantenimiento o torneos y consultas la ocupación y lo que te liquidamos cada mes.</p></article>
+                <article class="info-card"><h3>Ninguna pista vacía</h3><p data-i18n="cf-vacia">Las cancelaciones de última hora salen a subasta y los jugadores revenden lo que no van a usar: los huecos se llenan solos.</p></article>
+            </div>
+        </section>
+
+        <section class="info-section" aria-labelledby="rsc-title">
+            <h2 id="rsc-title">🤝 Compromiso social</h2>
+            <div class="info-grid">
+                <article class="info-card"><h3>Pista solidaria</h3><p data-i18n="cf-solidaria">Si una pista de última hora se queda sin pujas, se cede gratis a asociaciones juveniles, clubes de deporte adaptado y entidades sociales acreditadas. Se solicita desde <a href="perfil.html#pista-solidaria">Mi perfil</a>.</p></article>
+                <article class="info-card"><h3>Playas limpias</h3><p data-i18n="cf-playas">Jornadas de recogida de residuos con las escuelas de kayak y paddle surf (Ribera, Chorrillo, Benítez, Calamocarro). Los voluntarios reciben saldo gratuito.</p></article>
+                <article class="info-card"><h3>Deporte base y femenino</h3><p data-i18n="cf-base">Comisiones bonificadas para escuelas deportivas base y visibilidad para las ligas femeninas locales.</p></article>
+            </div>
+        </section>
+
+        <section class="info-section" aria-labelledby="faq-title">
+            <h2 id="faq-title">Preguntas frecuentes</h2>
+            <div class="info-faq">
+                <details><summary>¿Las CeutaCoins son dinero real?</summary><p data-i18n="cf-faq1">No. Esta versión es un prototipo y el pago es un simulacro: 1 CC equivale a 1 € para que las cifras sean realistas. En la versión comercial, el saldo se recargaría con una pasarela de pago (tarjeta o Bizum).</p></details>
+                <details><summary>¿Qué pasa si cancelo una reserva?</summary><p data-i18n="cf-faq2">Con más de 24 h de antelación te devolvemos todas las CeutaCoins. Con menos, no hay reembolso, pero puedes revenderla en subasta hasta la hora de inicio.</p></details>
+                <details><summary>¿Quién ve mis reservas?</summary><p data-i18n="cf-faq3">Solo tú. Los demás ven el turno como «Ocupada». Si abres tu reserva a más jugadores, se muestra tu nombre visible y el mensaje que escribas. Tu correo nunca se muestra.</p></details>
+                <details><summary>¿Puedo revender una reserva del ICD?</summary><p data-i18n="cf-faq4">No. Las reservas de instalaciones municipales no se revenden ni salen a subasta.</p></details>
+                <details><summary>¿Puedo instalarla en el móvil?</summary><p data-i18n="cf-faq5">Sí. En Chrome o Edge pulsa «📲 Instalar app» en el pie de la página; en iPhone, en Safari, usa «Compartir → Añadir a pantalla de inicio».</p></details>
+                <details><summary>¿Hay modo oscuro y otros idiomas?</summary><p data-i18n="cf-faq6">Sí: el botón 🌙 del menú cambia entre modo claro y oscuro, y en el pie puedes elegir español o inglés.</p></details>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

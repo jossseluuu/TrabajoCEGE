@@ -32,6 +32,8 @@ TrabajoGabi/
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml        ← publica main, dev y devep en GitHub Pages
+├── herramientas/
+│   └── generar-modo-oscuro.py← genera el modo oscuro al final de styles.css
 ├── supabase/
 │   ├── schema.sql            ← base de datos del servidor (pegar en Supabase)
 │   ├── admin.sql             ← permisos de administrador y panel admin
@@ -47,6 +49,10 @@ TrabajoGabi/
 │   ├── perfil.html           ← mi nivel, perfil público, monedero, reservas y subastas
 │   ├── comunidad.html        ← partidos abiertos, jugadores y ranking
 │   ├── gestor.html           ← panel del gestor de una instalación
+│   ├── como-funciona.html    ← guía de uso y preguntas frecuentes
+│   ├── legal.html            ← aviso legal, privacidad, cookies y condiciones
+│   ├── manifest.webmanifest  ← datos de la app instalable
+│   ├── sw.js                 ← service worker (app instalable y sin conexión)
 │   ├── reservas.html         ← reservar pistas (con opiniones y agenda)
 │   ├── mapa.html             ← mapa de instalaciones
 │   ├── admin.html            ← panel de administración (solo admins)
@@ -70,6 +76,8 @@ TrabajoGabi/
 │       ├── gestor.js         ← panel del gestor
 │       ├── avisos.js         ← campana de avisos del menú
 │       ├── viento.js         ← parte de viento (Open-Meteo) para los deportes náuticos
+│       ├── tema.js           ← modo claro / oscuro
+│       ├── i18n.js           ← traducción al inglés
 │       ├── admin.js          ← panel de administración
 │       ├── mapa.js, opiniones.js, portada.js
 └── README.md
@@ -77,7 +85,16 @@ TrabajoGabi/
 
 ---
 
-## 🆕 Fase 3: avisos, viento, panel del gestor y pista solidaria
+## 🆕 Fase 4: experiencia de uso
+
+- **⚡ Última hora agrupada:** el filtro «Última hora» de las subastas se ve como una tabla de instalaciones × horas, con un selector «¿A qué hora quieres jugar?». Cada casilla muestra el precio y las pistas libres, o si vas ganando o te han superado. Se puede volver a la vista de tarjetas.
+- **🌙 Modo claro/oscuro:** botón en el menú. Si no se elige, sigue el ajuste del sistema. Los estilos oscuros se generan con `python herramientas/generar-modo-oscuro.py` (vuelve a ejecutarlo si añades colores fijos en `styles.css`).
+- **🌐 Español e inglés:** selector en el pie de todas las páginas. Se traducen el menú, la portada, las reservas, la comunidad, el perfil, los avisos y «Cómo funciona» (`public/js/i18n.js`). El panel de administración, el del gestor y los textos legales siguen en español.
+- **📲 App instalable (PWA):** `manifest.webmanifest`, iconos y `sw.js`. Botón «Instalar app» en el pie (Chrome, Edge, Android; en iPhone, «Añadir a pantalla de inicio»). Sin conexión se abre la última versión vista; los datos siempre vienen del servidor.
+- **📘 Cómo funciona** (`como-funciona.html`): guía para jugadores, clubes y RSC, con preguntas frecuentes.
+- **⚖️ Textos legales** (`legal.html`): aviso legal (LSSI-CE), privacidad (RGPD y LOPDGDD), cookies, condiciones de uso y política de cancelaciones y reventa. Son un **borrador** del proyecto: antes de un lanzamiento real hay que revisarlos con una asesoría y completar los datos de la sociedad. Al registrarse se enlazan las condiciones y la privacidad.
+
+## Fase 3: avisos, viento, panel del gestor y pista solidaria
 
 - **🔔 Avisos** (campana del menú, con contador): te han superado en una subasta, has ganado, tu reventa se ha vendido, alguien quiere unirse a tu partido, te han aceptado o rechazado, tu partido es hoy o mañana, pista solidaria cedida, turnos de tu deporte favorito a mitad de precio y mejora del viento. Se pueden recibir también como notificaciones del navegador mientras la web está abierta.
 - **🌬️ Parte de viento** para kayak, paddle surf y piragüismo: viento por horas del día elegido (🟢 menos de 15 km/h, 🟡 hasta 25, 🔴 más), si es levante o poniente, qué bahía conviene y la próxima hora buena. Datos de [Open-Meteo](https://open-meteo.com) (gratis, sin clave; solo se envían las coordenadas de Ceuta).

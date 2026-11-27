@@ -315,6 +315,63 @@ const Subastas = (() => {
         }[filtro];
     }
 
+    // ---------- última hora agrupada: instalaciones × horas ----------
+    let vistaUltima = "tabla";   // "tabla" o "tarjetas"
+    let horaUltima = "";         // "" = todas
+
+    function celdaUltima(items, usuario) {
+        return items.map((s) => {
+            const ganando = usuario && s.mejorPuja && s.mejorPuja.usuarioId === usuario.id;
+            const superado = usuario && !ganando && s.pujas.some((p) => p.usuarioId === usuario.id);
+            const detalle = s.virtual
+                ? `${s.pistasLibres.length} ${s.pistasLibres.length === 1 ? "libre" : "libres"}`
+                : `${s.pujas.length} ${s.pujas.length === 1 ? "puja" : "pujas"} · ${esc(s.pista || "")}`;
+            return `<button type="button" class="ultima-cell ${ganando ? "is-winning" : superado ? "is-outbid" : s.virtual ? "" : "has-bids"}"
+                        data-accion="pujar" data-id="${esc(s.id)}"
+                        aria-label="${esc(s.titulo)}, ${s.hora}: ${s.precioActual} CC, ${detalle}">
+                        <strong>${s.precioActual} CC</strong>
+                        <small>${ganando ? "🏆 vas ganando" : superado ? "⚠️ superado" : detalle}</small>
+                    </button>`;
+        }).join("");
+    }
+
+    function tablaUltimaHora(lista, usuario) {
+        const hoy = Store.textoMadrid(Store.ahora()).slice(0, 10);
+        const clave = (s) => `${s.fecha}|${s.hora}`;
+        const todasHoras = [...new Set(lista.map(clave))].sort();
+        const horas = horaUltima ? todasHoras.filter((h) => h === horaUltima) : todasHoras;
+        const etiquetaHora = (h) => { const [f, hh] = h.split("|"); return `${f === hoy ? "" : "mañ. "}${hh}`; };
+        const instalaciones = [...new Set(lista.map((s) => Number(s.instalacionId)))]
+            .map((id) => INSTALACIONES.find((i) => i.id === id)).filter(Boolean);
+        const selector = `
+            <div class="ultima-head">
+                <label>¿A qué hora quieres jugar?
+                    <select data-ultima="hora">
+                        <option value="">Todas las horas</option>
+                        ${todasHoras.map((h) => `<option value="${h}" ${h === horaUltima ? "selected" : ""}>${etiquetaHora(h).replace("mañ.", "mañana")}</option>`).join("")}
+                    </select>
+                </label>
+                <p class="form-hint">Precio de salida: mitad del precio normal. Cada casilla es un turno de 1 h; pulsa para pujar. Cierra ${SUBASTA_AUTOMATICA.cierreMinAntes} min antes de empezar.</p>
+                <button type="button" class="login-btn" data-ultima="tarjetas">Ver como tarjetas</button>
+            </div>`;
+        if (!horas.length) return selector + `<p class="empty-results">No hay turnos a esa hora.</p>`;
+        const filas = instalaciones.map((inst) => {
+            const celdas = horas.map((h) => {
+                const items = lista.filter((s) => Number(s.instalacionId) === inst.id && clave(s) === h);
+                return `<td>${items.length ? celdaUltima(items, usuario) : `<span class="ultima-empty" aria-label="Sin turno">—</span>`}</td>`;
+            }).join("");
+            const normal = precioTurno(inst, hoy, "18:00", 60);
+            return `<tr><th scope="row"><span>${iconoDeporte(inst.deporte)} ${esc(inst.nombre)}</span><small>normal ${normal} CC/h</small></th>${celdas}</tr>`;
+        }).join("");
+        return `${selector}
+            <div class="ultima-scroll" role="region" tabindex="0" aria-label="Turnos de última hora">
+                <table class="ultima-table">
+                    <thead><tr><th scope="col">Instalación</th>${horas.map((h) => `<th scope="col">${etiquetaHora(h)}</th>`).join("")}</tr></thead>
+                    <tbody>${filas}</tbody>
+                </table>
+            </div>`;
+    }
+
     function pintar() {
         const usuario = Store.usuarioActual();
         const todas = Store.listarSubastas();
@@ -324,7 +381,11 @@ const Subastas = (() => {
         avisarCambios(todas, usuario);
         pintarResumen(todas);
 
-        $("subastas-grid").innerHTML = lista.map((s) => crearTarjeta(s, usuario)).join("");
+        const agrupada = filtro === "ultima-hora" && vistaUltima === "tabla" && lista.length > 0;
+        $("subastas-grid").classList.toggle("ultima-grid", agrupada);
+        $("subastas-grid").innerHTML = agrupada ? tablaUltimaHora(lista, usuario)
+            : (filtro === "ultima-hora" && lista.length ? `<p class="ultima-switch"><button type="button" class="login-btn" data-ultima="tabla">Ver agrupado por hora</button></p>` : "") +
+              lista.map((s) => crearTarjeta(s, usuario)).join("");
 
         const vacio = $("subastas-vacio");
         vacio.innerHTML = mensajeVacio(usuario);
@@ -674,7 +735,20 @@ const Subastas = (() => {
         });
 
         // Botones de las tarjetas
+        document.getElementById("subastas").addEventListener("change", (event) => {
+            if (event.target.dataset.ultima === "hora") {
+                horaUltima = event.target.value;
+                pintar();
+            }
+        });
+
         document.getElementById("subastas").addEventListener("click", async (event) => {
+            const vista = event.target.closest("[data-ultima=tarjetas], [data-ultima=tabla]");
+            if (vista) {
+                vistaUltima = vista.dataset.ultima;
+                pintar();
+                return;
+            }
             const boton = event.target.closest("[data-accion]");
             if (!boton) return;
             const { accion, id } = boton.dataset;

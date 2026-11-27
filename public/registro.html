@@ -6,10 +6,14 @@
     <title>Registrarse | CeutaPlay</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%8E%BE%3C/text%3E%3C/svg%3E">
     <link rel="stylesheet" href="css/styles.css">
+    <script src="js/tema.js"></script>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="apple-touch-icon" href="img/app/apple-touch-icon.png">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
     <script src="js/config.js" defer></script>
     <script src="js/data.js" defer></script>
     <script src="js/store.js" defer></script>
+    <script src="js/i18n.js" defer></script>
     <script src="js/nav.js" defer></script>
     <script src="js/login.js" defer></script>
 </head>
@@ -36,6 +40,7 @@
                 <label for="password2">Repite la contraseña</label>
                 <input type="password" id="password2" autocomplete="new-password" minlength="8" required>
 
+                <p class="form-hint legal-accept">Al crear la cuenta aceptas las <a href="legal.html#condiciones" target="_blank">condiciones de uso</a> y la <a href="legal.html#privacidad" target="_blank">política de privacidad</a>.</p>
                 <button type="submit" class="register-btn">Crear cuenta</button>
             </form>
 

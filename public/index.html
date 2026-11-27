@@ -9,6 +9,9 @@
     <!-- Rutas relativas: necesarias para que funcione en https://usuario.github.io/TrabajoCEGE/ -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%8E%BE%3C/text%3E%3C/svg%3E">
     <link rel="stylesheet" href="css/styles.css">
+    <script src="js/tema.js"></script>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="apple-touch-icon" href="img/app/apple-touch-icon.png">
     <script src="js/portada.js" defer></script>
 </head>
 
@@ -32,7 +35,7 @@
         <div class="container hero-content">
             <div class="hero-copy">
                 <h1 id="home-title">Tu próxima partida empieza <span>aquí.</span></h1>
-                <p>Encuentra instalaciones de pádel, tenis y fútbol. Consulta sus turnos y reserva desde CeutaPlay.</p>
+                <p data-i18n="portada-intro">Encuentra instalaciones de pádel, tenis y fútbol. Consulta sus turnos y reserva desde CeutaPlay.</p>
                 <form class="search-box" id="search-form" aria-label="Buscar instalaciones">
                     <div class="search-field">
                         <label for="deporte">Deporte</label>
@@ -199,6 +202,7 @@
 
                 <p class="form-error" hidden></p>
 
+                <p class="form-hint legal-accept">Al crear la cuenta aceptas las <a href="legal.html#condiciones" target="_blank">condiciones de uso</a> y la <a href="legal.html#privacidad" target="_blank">política de privacidad</a>.</p>
                 <button type="submit" class="submit-btn">Crear cuenta</button>
 
                 <p class="form-hint">
@@ -298,6 +302,7 @@
     <script src="js/data.js"></script>
     <script src="js/store.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/i18n.js"></script>
     <script src="js/nav.js"></script>
     <script src="js/viento.js"></script>
     <script src="js/avisos.js"></script>

@@ -1,0 +1,24 @@
+{
+    "name": "CeutaPlay · Reserva pistas en Ceuta",
+    "short_name": "CeutaPlay",
+    "description": "Reserva pistas e instalaciones deportivas de Ceuta, puja por turnos de última hora y encuentra gente para jugar.",
+    "lang": "es",
+    "start_url": "./index.html",
+    "scope": "./",
+    "display": "standalone",
+    "orientation": "portrait-primary",
+    "background_color": "#0f172a",
+    "theme_color": "#2563eb",
+    "categories": ["sports", "lifestyle"],
+    "icons": [
+        { "src": "img/app/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+        { "src": "img/app/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+        { "src": "img/app/icono-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+        { "src": "img/app/icono-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    ],
+    "shortcuts": [
+        { "name": "Reservar pista", "url": "./reservas.html", "icons": [{ "src": "img/app/icono-192.png", "sizes": "192x192" }] },
+        { "name": "Subastas de última hora", "url": "./index.html#subastas", "icons": [{ "src": "img/app/icono-192.png", "sizes": "192x192" }] },
+        { "name": "Comunidad", "url": "./comunidad.html", "icons": [{ "src": "img/app/icono-192.png", "sizes": "192x192" }] }
+    ]
+}
