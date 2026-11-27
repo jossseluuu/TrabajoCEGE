@@ -113,6 +113,69 @@ document.querySelector(".wallet-actions").addEventListener("click", async (event
     }
 });
 
+// ---------- nivel e insignias ----------
+
+function showLevel(usuario) {
+    const nivel = Store.puntosDe(usuario.id);
+    document.getElementById("my-level").innerHTML = `
+        <div class="my-level-card">
+            ${Comunidad.avatar(usuario, "avatar-lg")}
+            ${Comunidad.nivelHTML(nivel)}
+        </div>`;
+    document.getElementById("my-badges").innerHTML = Comunidad.insigniasHTML(nivel.insignias, { todas: true });
+    document.getElementById("public-profile-link").href = `comunidad.html?jugador=${encodeURIComponent(usuario.id)}`;
+    document.getElementById("points-rules").innerHTML = Store.PUNTOS.map((p) =>
+        `<li><strong>+${p.valor}</strong> ${p.texto} <span class="form-hint">(llevas ${nivel.detalle[p.clave] || 0})</span></li>`).join("");
+    document.getElementById("levels-rules").textContent = "Niveles: " +
+        Store.NIVELES.map((n) => `${n.icono} ${n.nombre} (${n.min} pts)`).join(" · ");
+}
+
+// ---------- perfil público editable ----------
+
+const profileForm = document.getElementById("profile-form");
+const inputName = document.getElementById("profile-input-name");
+const inputSport = document.getElementById("profile-input-sport");
+const inputBio = document.getElementById("profile-input-bio");
+let formFor = null; // usuario cuyos datos hay en el formulario (no se pisa lo que se está escribiendo)
+
+inputSport.append(...DEPORTES.map((d) => new Option(`${d.icono} ${d.nombre}`, d.nombre)));
+const updateBioCount = () => (document.getElementById("bio-count").textContent = `${inputBio.value.length}/280`);
+inputBio.addEventListener("input", updateBioCount);
+
+function fillProfileForm(usuario, force = false) {
+    if (!force && formFor === usuario.id) return;
+    formFor = usuario.id;
+    const publico = Store.getUsuario(usuario.id) || usuario;
+    inputName.value = usuario.nombre;
+    inputSport.value = publico.deporteFavorito || "";
+    inputBio.value = publico.bio || "";
+    updateBioCount();
+}
+
+profileForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const status = document.getElementById("profile-status");
+    const motivo = Store.motivoNombre(inputName.value);
+    if (motivo) {
+        status.textContent = motivo;
+        status.className = "status-error";
+        return;
+    }
+    const button = profileForm.querySelector("button[type=submit]");
+    button.disabled = true;
+    try {
+        await Store.actualizarPerfil({ nombre: inputName.value, bio: inputBio.value, deporteFavorito: inputSport.value });
+        status.textContent = "✅ Perfil guardado.";
+        status.className = "status-ok";
+        fillProfileForm(Store.usuarioActual(), true);
+    } catch (error) {
+        status.textContent = error.message;
+        status.className = "status-error";
+    } finally {
+        button.disabled = false;
+    }
+});
+
 function showProfile() {
     if (!requireLogin()) {
         profilePanel.hidden = true;
@@ -122,6 +185,8 @@ function showProfile() {
     profileName.textContent = `Hola, ${usuario.nombre}`;
     profileName.hidden = false;
     profileEmail.textContent = usuario.email;
+    fillProfileForm(usuario);
+    showLevel(usuario);
     showWallet();
     showBookingSummary();
     showAuctionSummary(usuario);

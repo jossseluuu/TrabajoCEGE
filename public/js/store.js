@@ -170,6 +170,26 @@ const Store = (() => {
         { min: 300, nombre: "Leyenda de Ceuta", icono: "🏆" },
     ];
 
+    // Cuántos puntos da cada cosa (se enseña en el perfil)
+    const PUNTOS = [
+        { clave: "jugadas", valor: 10, texto: "por cada partido jugado" },
+        { clave: "unidas", valor: 6, texto: "por unirte al partido de otro jugador" },
+        { clave: "ganadas", valor: 8, texto: "por cada subasta ganada" },
+        { clave: "vendidas", valor: 4, texto: "por revender una reserva (la pista no se queda vacía)" },
+        { clave: "opiniones", valor: 3, texto: "por valorar una instalación" },
+        { clave: "pujas", valor: 1, texto: "por cada puja" },
+    ];
+
+    const INSIGNIAS = [
+        { id: "debut", icono: "🎾", nombre: "Primer partido", texto: "Ha jugado su primer partido", cumple: (d) => d.jugadas >= 1 },
+        { id: "fijo", icono: "📅", nombre: "Fijo en la pista", texto: "10 partidos jugados", cumple: (d) => d.jugadas >= 10 },
+        { id: "social", icono: "🤝", nombre: "Buen compañero", texto: "Se ha unido a 3 partidos de otros", cumple: (d) => d.unidas >= 3 },
+        { id: "pujador", icono: "🔨", nombre: "Pujador", texto: "5 pujas en subastas", cumple: (d) => d.pujas >= 5 },
+        { id: "ganga", icono: "🏷️", nombre: "Cazagangas", texto: "Ha ganado una subasta", cumple: (d) => d.ganadas >= 1 },
+        { id: "reventa", icono: "♻️", nombre: "Ninguna pista vacía", texto: "Ha revendido una reserva", cumple: (d) => d.vendidas >= 1 },
+        { id: "critico", icono: "⭐", nombre: "Opinión que cuenta", texto: "Ha valorado una instalación", cumple: (d) => d.opiniones >= 1 },
+    ];
+
     function nivelDe(puntos) {
         const actual = [...NIVELES].reverse().find((n) => puntos >= n.min);
         const siguiente = NIVELES.find((n) => n.min > puntos) || null;
@@ -386,6 +406,8 @@ const Store = (() => {
         // turnos ocupados de todo el mundo, sin datos personales
         let ocupados = [];
         let plataforma = true; // false si aún no se ha ejecutado supabase/plataforma.sql
+        // actividad de cada jugador (solo recuentos) para puntos y niveles
+        let estadisticas = null;
         const datos = {
             perfiles: new Map(), subastas: [], pujas: [], reservas: [],
             participantes: [], movimientos: [], gestiona: [], entidad: null, peticiones: [],
@@ -414,11 +436,12 @@ const Store = (() => {
 
         const cargadores = {
             async perfiles() {
-                let r = await client.from("perfiles").select("id, nombre, creado, bio, deporte_favorito");
+                let r = await client.from("perfiles").select("id, nombre, creado, bio, deporte_favorito, es_admin");
+                if (r.error) r = await client.from("perfiles").select("id, nombre, creado, bio, deporte_favorito");
                 if (r.error) r = await client.from("perfiles").select("id, nombre, creado");
                 datos.perfiles = new Map(comprobar(r).map((p) => [p.id, {
                     id: p.id, nombre: p.nombre, creado: Date.parse(p.creado) || null,
-                    bio: p.bio || "", deporteFavorito: p.deporte_favorito || "",
+                    bio: p.bio || "", deporteFavorito: p.deporte_favorito || "", admin: p.es_admin === true,
                 }]));
             },
             async subastas() {
@@ -526,6 +549,15 @@ const Store = (() => {
             },
         };
 
+        async function cargarEstadisticas() {
+            if (!sesion || !plataforma) { estadisticas = null; return; }
+            const r = await client.rpc("estadisticas_comunidad");
+            estadisticas = r.error ? null : new Map(r.data.map((e) => [e.usuario_id, {
+                jugadas: e.jugadas, unidas: e.unidas, pujas: e.pujas,
+                ganadas: e.ganadas, vendidas: e.vendidas, opiniones: e.opiniones,
+            }]));
+        }
+
         async function recargar(...tablas) {
             if (!tablas.length) tablas = Object.keys(cargadores);
             try {
@@ -539,6 +571,9 @@ const Store = (() => {
                      datos.participantes.some((x) => desconocido(x.usuarioId)) ||
                      datos.reservas.some((r) => desconocido(r.userId)))) {
                     await cargadores.perfiles();
+                }
+                if (tablas.some((t) => ["reservas", "pujas", "subastas", "participantes"].includes(t))) {
+                    await cargarEstadisticas();
                 }
             } catch (error) {
                 console.error("Error al cargar datos del servidor:", error);
@@ -1067,6 +1102,8 @@ const Store = (() => {
             misReservas, pistaOcupada, reservar, cancelarReserva,
             reservasParaAgenda: () => (sesion ? turnosOcupados() : []),
             todasLasReservas: () => datos.reservas,
+            listarUsuarios: () => [...datos.perfiles.values()],
+            estadisticas: (usuarioId) => (estadisticas ? estadisticas.get(usuarioId) || null : null),
             turnosOcupados,
             configurarReserva, solicitarUnirse, responderSolicitud, salirDeReserva, actualizarPerfil, listarOpinionesDe,
             participantes: () => datos.participantes,
@@ -1115,7 +1152,7 @@ const Store = (() => {
             version: `cp_version_demo:${CARPETA}`,
         };
         // Si cambian los datos de ejemplo, se suben de versión y se recrean
-        const VERSION_DEMO = "3";
+        const VERSION_DEMO = "4";
 
         const ahora = () => Date.now();
 
@@ -1582,6 +1619,21 @@ const Store = (() => {
             return leer(KEYS.opiniones, []).filter((o) => o.usuarioId === usuarioId);
         }
 
+        // Actividad de un jugador (igual que estadisticas_comunidad() en SQL)
+        function estadisticasLocal(usuarioId) {
+            const t = ahora();
+            const subastas = listarSubastas();
+            return {
+                jugadas: todasLasReservas().filter((r) => r.userId === usuarioId && (r.tipo || "normal") === "normal" &&
+                    msMadrid(r.date, r.time) < t).length,
+                unidas: todosParticipantes().filter((x) => x.usuarioId === usuarioId && x.estado === "aceptado").length,
+                pujas: subastas.reduce((n, s) => n + s.pujas.filter((x) => x.usuarioId === usuarioId).length, 0),
+                ganadas: subastas.filter((s) => s.ganador && s.ganador.id === usuarioId).length,
+                vendidas: subastas.filter((s) => s.vendedorId === usuarioId && s.ganador).length,
+                opiniones: leer(KEYS.opiniones, []).filter((o) => o.usuarioId === usuarioId).length,
+            };
+        }
+
         // ---------- monedero ----------
 
         async function recargarSaldo(importe) {
@@ -1970,6 +2022,11 @@ const Store = (() => {
             misReservas, pistaOcupada, reservar, cancelarReserva,
             reservasParaAgenda: () => usuarioActual() ? todasLasReservas() : [],
             todasLasReservas,
+            listarUsuarios: () => getUsuarios().map((u) => {
+                const { email, ...publico } = usuarioPublico(u);
+                return publico;
+            }),
+            estadisticas: estadisticasLocal,
             turnosOcupados: todasLasReservas,
             configurarReserva, solicitarUnirse, responderSolicitud, salirDeReserva, actualizarPerfil, listarOpinionesDe,
             participantes: () => {
@@ -2055,18 +2112,34 @@ const Store = (() => {
     const pistaOcupada = (facility, court, date, time, duracion = 60) => backend.pistaOcupada(facility, court, date, time, duracion) ||
         turnosEnSubasta().some((r) => solapan(r, { facility, court, date, time, duracion }));
 
-    // ---------- comunidad: puntos a partir de la actividad visible ----------
-    function puntosDe(usuarioId) {
+    // ---------- comunidad: puntos, niveles e insignias ----------
+    // Con el servidor, los recuentos vienen de estadisticas_comunidad() (no
+    // revela qué reservas son). Si aún no existe, se cuenta lo que se ve.
+    function actividadVisible(usuarioId) {
         const ahoraMs = backend.ahora();
-        const jugadas = backend.todasLasReservas().filter((r) => r.userId === usuarioId && (r.tipo || "normal") === "normal" &&
-            msMadrid(r.date, r.time) < ahoraMs).length;
-        const unidas = backend.participantes().filter((x) => x.usuarioId === usuarioId && x.estado === "aceptado").length;
         const subastas = backend.listarSubastas();
-        const pujas = subastas.reduce((n, s) => n + s.pujas.filter((x) => x.usuarioId === usuarioId).length, 0);
-        const ganadas = subastas.filter((s) => s.ganador && s.ganador.id === usuarioId).length;
-        const vendidas = subastas.filter((s) => s.vendedorId === usuarioId && s.ganador).length;
-        const puntos = jugadas * 10 + unidas * 6 + pujas * 1 + ganadas * 8 + vendidas * 4;
-        return { ...nivelDe(puntos), detalle: { jugadas, unidas, pujas, ganadas, vendidas } };
+        return {
+            jugadas: backend.todasLasReservas().filter((r) => r.userId === usuarioId && (r.tipo || "normal") === "normal" &&
+                msMadrid(r.date, r.time) < ahoraMs).length,
+            unidas: backend.participantes().filter((x) => x.usuarioId === usuarioId && x.estado === "aceptado").length,
+            pujas: subastas.reduce((n, s) => n + s.pujas.filter((x) => x.usuarioId === usuarioId).length, 0),
+            ganadas: subastas.filter((s) => s.ganador && s.ganador.id === usuarioId).length,
+            vendidas: subastas.filter((s) => s.vendedorId === usuarioId && s.ganador).length,
+            opiniones: 0,
+        };
+    }
+
+    function puntosDe(usuarioId) {
+        const detalle = backend.estadisticas(usuarioId) || actividadVisible(usuarioId);
+        const puntos = PUNTOS.reduce((n, p) => n + (detalle[p.clave] || 0) * p.valor, 0);
+        return { ...nivelDe(puntos), detalle, insignias: INSIGNIAS.filter((i) => i.cumple(detalle)) };
+    }
+
+    // Jugadores de la comunidad con su nivel, de más a menos puntos
+    function ranking() {
+        return backend.listarUsuarios()
+            .map((u) => ({ ...u, nivel: puntosDe(u.id) }))
+            .sort((a, b) => b.nivel.puntos - a.nivel.puntos || a.nombre.localeCompare(b.nombre, "es"));
     }
 
     // Reservas abiertas (públicas) futuras a las que se puede pedir unirse
@@ -2102,6 +2175,6 @@ const Store = (() => {
     return {
         ...backend, modo, inicializar,
         listarHuecosAutomaticos, getSubasta, pujar, reservasParaAgenda, pistaOcupada, cerrarSubastas,
-        msMadrid, textoMadrid, solapan, puntosDe, nivelDe, NIVELES, reservasAbiertas,
+        msMadrid, textoMadrid, solapan, puntosDe, nivelDe, NIVELES, PUNTOS, INSIGNIAS, ranking, reservasAbiertas,
     };
 })();

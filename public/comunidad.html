@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comunidad | CeutaPlay</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%8E%BE%3C/text%3E%3C/svg%3E">
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+    <script src="js/config.js" defer></script>
+    <script src="js/data.js" defer></script>
+    <script src="js/store.js" defer></script>
+    <script src="js/booking-storage.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/nav.js" defer></script>
+    <script src="js/comunidad-comun.js" defer></script>
+    <script src="js/comunidad.js" defer></script>
+</head>
+<body data-requiere-login>
+
+    <!-- Cabecera común: la dibuja js/nav.js -->
+    <header class="navbar" id="site-header" data-pagina="comunidad"></header>
+    <main class="container community-page" aria-labelledby="community-title">
+        <header class="community-heading">
+            <div>
+                <h1 id="community-title">Comunidad</h1>
+                <p>Encuentra gente para jugar en Ceuta: únete a partidos abiertos, conoce a otros jugadores y sube de nivel.</p>
+            </div>
+            <a class="community-me" id="community-me" href="perfil.html#mi-nivel" hidden></a>
+        </header>
+
+        <div class="admin-tabs" role="tablist" aria-label="Secciones de la comunidad">
+            <button type="button" class="auction-filter active" role="tab" id="tab-partidos" aria-controls="panel-partidos" aria-selected="true" data-tab="partidos">🙋 Partidos abiertos <span class="filter-count" id="count-partidos" hidden></span></button>
+            <button type="button" class="auction-filter" role="tab" id="tab-jugadores" aria-controls="panel-jugadores" aria-selected="false" data-tab="jugadores">👥 Jugadores</button>
+            <button type="button" class="auction-filter" role="tab" id="tab-ranking" aria-controls="panel-ranking" aria-selected="false" data-tab="ranking">🏆 Ranking</button>
+        </div>
+
+        <section id="panel-partidos" class="reservation-panel" role="tabpanel" aria-labelledby="tab-partidos">
+            <div class="community-toolbar">
+                <h2>Partidos que buscan jugadores</h2>
+                <label>Deporte
+                    <select id="filtro-deporte-partidos"><option value="">Todos</option></select>
+                </label>
+            </div>
+            <p class="form-hint">Pide unirte y el organizador decide. Si te acepta, el partido aparece en «Mis reservas». Para abrir uno tuyo, marca «Reserva abierta» al <a href="reservas.html">reservar</a>.</p>
+            <p id="community-status" role="status" class="community-status"></p>
+            <ul id="match-list" class="match-list"></ul>
+        </section>
+
+        <section id="panel-jugadores" class="reservation-panel" role="tabpanel" aria-labelledby="tab-jugadores" hidden>
+            <div class="community-toolbar">
+                <h2>Jugadores</h2>
+                <label>Buscar
+                    <input id="buscar-jugador" type="search" placeholder="Nombre o lo que cuenta en su perfil" autocomplete="off">
+                </label>
+                <label>Deporte favorito
+                    <select id="filtro-deporte-jugadores"><option value="">Todos</option></select>
+                </label>
+            </div>
+            <p id="player-count" class="form-hint" role="status"></p>
+            <ul id="player-list" class="player-grid"></ul>
+        </section>
+
+        <section id="panel-ranking" class="reservation-panel" role="tabpanel" aria-labelledby="tab-ranking" hidden>
+            <h2>Ranking de CeutaPlay</h2>
+            <p class="form-hint">Los puntos salen de la actividad: partidos jugados, unirse a partidos de otros, subastas y opiniones. <a href="perfil.html#mi-nivel">¿Cómo se ganan?</a></p>
+            <ol id="ranking-list" class="ranking-list"></ol>
+        </section>
+    </main>
+
+    <dialog class="modal player-modal" id="player-modal" aria-labelledby="player-name">
+        <div class="modal-box" id="player-detail"></div>
+    </dialog>
+</body>
+</html>

@@ -12,6 +12,8 @@
     <script src="js/store.js" defer></script>
     <script src="js/nav.js" defer></script>
     <script src="js/booking-storage.js" defer></script>
+    <script src="js/auth.js" defer></script>
+    <script src="js/comunidad-comun.js" defer></script>
     <script src="js/perfil.js" defer></script>
 </head>
 <body data-requiere-login>
@@ -23,6 +25,34 @@
             <h1 id="profile-title">Mi perfil</h1>
             <p id="profile-name" hidden></p>
             <p id="profile-email" class="profile-email"></p>
+            <section class="profile-bookings" id="mi-nivel" aria-labelledby="level-title">
+                <div class="profile-bookings-header">
+                    <h2 id="level-title">🏅 Mi nivel en la comunidad</h2>
+                    <a class="login-btn" id="public-profile-link" href="comunidad.html">Ver mi ficha pública</a>
+                </div>
+                <div id="my-level"></div>
+                <h3>Insignias</h3>
+                <div id="my-badges"></div>
+                <details class="points-help">
+                    <summary>¿Cómo se ganan puntos?</summary>
+                    <ul id="points-rules"></ul>
+                    <p class="form-hint" id="levels-rules"></p>
+                </details>
+            </section>
+            <section class="profile-bookings" id="editar-perfil" aria-labelledby="edit-title">
+                <h2 id="edit-title">✏️ Mi perfil público</h2>
+                <p class="form-hint">Es lo que ven los demás jugadores en la <a href="comunidad.html">comunidad</a>. Tu correo nunca se muestra.</p>
+                <form id="profile-form" class="login-form profile-form">
+                    <label for="profile-input-name">Nombre visible</label>
+                    <input id="profile-input-name" maxlength="40" required autocomplete="nickname">
+                    <label for="profile-input-sport">Deporte favorito</label>
+                    <select id="profile-input-sport"><option value="">Multideporte</option></select>
+                    <label for="profile-input-bio">Sobre mí <small id="bio-count">0/280</small></label>
+                    <textarea id="profile-input-bio" rows="3" maxlength="280" placeholder="Ej.: Pádel por las tardes, nivel medio. Busco pareja para dobles."></textarea>
+                    <button type="submit" class="register-btn">Guardar cambios</button>
+                    <p id="profile-status" role="status"></p>
+                </form>
+            </section>
             <section class="profile-bookings wallet" id="monedero" aria-labelledby="wallet-title">
                 <div class="profile-bookings-header">
                     <h2 id="wallet-title">🪙 Mi monedero</h2>

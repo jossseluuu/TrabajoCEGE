@@ -44,7 +44,8 @@ TrabajoGabi/
 │   ├── index.html            ← página principal (instalaciones + subastas)
 │   ├── login.html            ← iniciar sesión
 │   ├── registro.html         ← crear cuenta
-│   ├── perfil.html           ← mis reservas y mis subastas
+│   ├── perfil.html           ← mi nivel, perfil público, monedero, reservas y subastas
+│   ├── comunidad.html        ← partidos abiertos, jugadores y ranking
 │   ├── reservas.html         ← reservar pistas (con opiniones y agenda)
 │   ├── mapa.html             ← mapa de instalaciones
 │   ├── admin.html            ← panel de administración (solo admins)
@@ -63,6 +64,8 @@ TrabajoGabi/
 │       ├── booking-storage.js← utilidades de reservas
 │       ├── reservas.js       ← página de reservas
 │       ├── perfil.js         ← página de perfil
+│       ├── comunidad.js      ← página de comunidad
+│       ├── comunidad-comun.js← avatares, niveles e insignias (comunidad y perfil)
 │       ├── admin.js          ← panel de administración
 │       ├── mapa.js, opiniones.js, portada.js
 └── README.md
@@ -70,7 +73,20 @@ TrabajoGabi/
 
 ---
 
-## 🆕 Fase 1: reservas por tramos, CeutaCoins y privacidad
+## 🆕 Fase 2: comunidad, perfil editable y niveles
+
+- **Comunidad** (`comunidad.html`, en el menú): tres pestañas.
+  - **Partidos abiertos:** reservas de otros jugadores que buscan gente. Se pide unirse con un mensaje; el organizador acepta o rechaza en *Mis reservas*. También se puede retirar la solicitud o salir del partido.
+  - **Jugadores:** perfiles públicos con nombre, deporte favorito, biografía, nivel e insignias. Buscador y filtro por deporte.
+  - **Ranking** por puntos.
+- **Ficha de jugador:** al pulsar en cualquier nombre se abre su ficha (nivel, partidos jugados, insignias, sus partidos abiertos y sus opiniones). Enlace directo: `comunidad.html?jugador=<id>`.
+- **Perfil editable** (*Mi perfil → Mi perfil público*): nombre visible, deporte favorito y «Sobre mí». El nombre pasa por la lista de nombres prohibidos. El correo nunca se muestra.
+- **Niveles e insignias:** puntos por partidos jugados (+10), unirse a partidos de otros (+6), subastas ganadas (+8), reventas (+4), opiniones (+3) y pujas (+1). Niveles: 🌱 Novato, 🎾 Habitual, 🔥 Competidor, 🏅 Veterano y 🏆 Leyenda de Ceuta. En *Mi perfil → Mi nivel* se ve el progreso y cómo se gana cada punto.
+- **Privacidad:** de los demás solo se ven sus reservas abiertas. Los puntos se calculan en el servidor con `estadisticas_comunidad()`, que devuelve solo recuentos.
+- **Datos ficticios:** historial de partidos antiguos para que cada jugador tenga un nivel distinto (Karim es Veterano, Ana Competidora…).
+- **En Supabase:** vuelve a ejecutar `supabase/plataforma.sql` y, en un proyecto de pruebas, `supabase/seed.sql` (regenerado).
+
+## Fase 1: reservas por tramos, CeutaCoins y privacidad
 
 - **Reservas de 30 min a 3 h**, que empiezan cada 30 min. La disponibilidad tiene en cuenta los solapes y la tabla de horarios del día va por tramos de 30 min.
 - **Precio por franja:** el precio de cada instalación es el de hora punta; en hora valle (lunes a viernes antes de las 17:00) es un 20 % más barato.

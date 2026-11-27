@@ -1275,6 +1275,43 @@ grant execute on function public.admin_listar_usuarios() to authenticated;
 
 
 -- =====================================================================
+-- COMUNIDAD: actividad de cada jugador para los puntos y niveles
+-- Solo devuelve recuentos (nunca qué reservas son ni cuándo), así la
+-- privacidad de las reservas se mantiene. Igual que puntosDe() en store.js.
+-- =====================================================================
+
+create or replace function public.estadisticas_comunidad()
+returns table (usuario_id uuid, jugadas integer, unidas integer, pujas integer,
+               ganadas integer, vendidas integer, opiniones integer)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+    with ganador as (
+        select s.id, s.vendedor_id,
+               (select p.usuario_id from public.pujas p where p.subasta_id = s.id
+                order by p.cantidad desc, p.fecha asc limit 1) as usuario_id
+        from public.subastas s
+        where not s.cancelada and s.fin <= now()
+    )
+    select pf.id,
+        (select count(*) from public.reservas r where r.usuario_id = pf.id and r.tipo = 'normal'
+            and public.inicio_turno(r.fecha, r.hora) < now())::integer,
+        (select count(*) from public.participantes x where x.usuario_id = pf.id and x.estado = 'aceptado')::integer,
+        (select count(*) from public.pujas p where p.usuario_id = pf.id)::integer,
+        (select count(*) from ganador g where g.usuario_id = pf.id)::integer,
+        (select count(*) from ganador g where g.vendedor_id = pf.id and g.usuario_id is not null)::integer,
+        (select count(*) from public.opiniones o where o.usuario_id = pf.id)::integer
+    from public.perfiles pf
+    where auth.uid() is not null;
+$$;
+
+revoke execute on function public.estadisticas_comunidad() from public, anon;
+grant execute on function public.estadisticas_comunidad() to authenticated;
+
+
+-- =====================================================================
 -- TIEMPO REAL
 -- =====================================================================
 

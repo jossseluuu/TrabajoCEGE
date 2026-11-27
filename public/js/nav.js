@@ -4,7 +4,7 @@
 // Cada página solo necesita:
 //   <header class="navbar" id="site-header" data-pagina="inicio"></header>
 // y cargar este archivo después de store.js. Valores de data-pagina:
-// inicio, mapa, reservas, perfil, admin, login, registro.
+// inicio, mapa, reservas, comunidad, perfil, admin, login, registro.
 //
 // En la página principal los botones de entrar/registrarse abren la ventana
 // de auth.js; en el resto llevan a login.html y vuelven después a la página.
@@ -30,6 +30,7 @@ const Nav = (() => {
             { href: "mapa.html", texto: "Mapa", pagina: "mapa" },
             { href: "reservas.html", texto: "Reservar", pagina: "reservas" },
             { href: `${base}#subastas`, texto: "Subastas" },
+            { href: "comunidad.html", texto: "Comunidad", pagina: "comunidad" },
         ];
         if (usuario && usuario.admin) {
             lista.push({ href: "admin.html", texto: "Panel admin", pagina: "admin", clase: "nav-admin" });

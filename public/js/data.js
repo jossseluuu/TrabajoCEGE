@@ -553,6 +553,32 @@ const RESERVAS_DEMO = [
     { usuario: "nora", instalacionId: 8, pista: "Pista 3", dias: 8, hora: "19:30", duracion: 60 },
 ];
 
+// Historial de partidos antiguos (hace 6 semanas o más) para que cada jugador
+// tenga un nivel distinto en la comunidad. Cada jugador juega a su hora, así
+// nunca coinciden dos reservas en la misma pista.
+const HISTORIAL_DEMO = [
+    { usuario: "karim", instalacionId: 4, partidos: 16, hora: "18:00", companeros: ["youssef", "sara", "ana"] },
+    { usuario: "ana", instalacionId: 1, partidos: 11, hora: "19:00", companeros: ["karim", "sara"] },
+    { usuario: "paula", instalacionId: 7, partidos: 8, hora: "10:00", companeros: ["ivan", "lucia"] },
+    { usuario: "ivan", instalacionId: 8, partidos: 6, hora: "20:00", companeros: ["paula"] },
+    { usuario: "lucia", instalacionId: 6, partidos: 5, hora: "11:00", companeros: ["ivan"] },
+    { usuario: "youssef", instalacionId: 1, partidos: 4, hora: "17:00", companeros: ["hamza"] },
+    { usuario: "hamza", instalacionId: 16, partidos: 3, hora: "12:00", companeros: ["marta"] },
+    { usuario: "sara", instalacionId: 5, partidos: 2, hora: "16:00", companeros: [] },
+    { usuario: "marta", instalacionId: 17, partidos: 2, hora: "13:00", companeros: [] },
+];
+for (const h of HISTORIAL_DEMO) {
+    const pistas = INSTALACIONES.find((i) => i.id === h.instalacionId).pistas;
+    for (let k = 0; k < h.partidos; k++) {
+        const companero = h.companeros.length && k % 2 === 0 ? h.companeros[(k / 2) % h.companeros.length] : null;
+        RESERVAS_DEMO.push({
+            usuario: h.usuario, instalacionId: h.instalacionId, pista: pistas[k % pistas.length],
+            dias: -(44 + k * 3), hora: h.hora, duracion: 60, publica: Boolean(companero), plazas: 4,
+            participantes: companero ? [{ usuario: companero, estado: "aceptado", mensaje: "" }] : [],
+        });
+    }
+}
+
 // Reseñas de las instalaciones
 const OPINIONES_DEMO = [
     { usuario: "ana", instalacionId: 1, puntuacion: 5, dias: -39, comentario: "Pistas cuidadas y vistas al mar. Por la tarde se llena, mejor reservar con tiempo." },

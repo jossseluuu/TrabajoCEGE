@@ -366,6 +366,376 @@ begin
     returning id into v_res;
     insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
     values (v_nora, -public.precio_turno(15, v_hoy + 8, '19:30', 60), 'reserva', 'Club de Tenis Ceuta · Pista 3', v_res, now() + interval '5 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_karim, 4, 'Doble 1', v_hoy + -44, '18:00', 60, public.precio_turno(15, v_hoy + -44, '18:00', 60),
+        true, true, 4, '', now() + interval '-47 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_karim, -public.precio_turno(15, v_hoy + -44, '18:00', 60), 'reserva', 'Pádel Jardines de la Hípica · Doble 1', v_res, now() + interval '-47 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_youssef, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_karim, 4, 'Doble 2', v_hoy + -47, '18:00', 60, public.precio_turno(15, v_hoy + -47, '18:00', 60),
+        false, false, 4, '', now() + interval '-50 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_karim, -public.precio_turno(15, v_hoy + -47, '18:00', 60), 'reserva', 'Pádel Jardines de la Hípica · Doble 2', v_res, now() + interval '-50 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_karim, 4, 'Individual', v_hoy + -50, '18:00', 60, public.precio_turno(15, v_hoy + -50, '18:00', 60),
+        true, true, 4, '', now() + interval '-53 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_karim, -public.precio_turno(15, v_hoy + -50, '18:00', 60), 'reserva', 'Pádel Jardines de la Hípica · Individual', v_res, now() + interval '-53 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_sara, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_karim, 4, 'Doble 1', v_hoy + -53, '18:00', 60, public.precio_turno(15, v_hoy + -53, '18:00', 60),
+        false, false, 4, '', now() + interval '-56 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_karim, -public.precio_turno(15, v_hoy + -53, '18:00', 60), 'reserva', 'Pádel Jardines de la Hípica · Doble 1', v_res, now() + interval '-56 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_karim, 4, 'Doble 2', v_hoy + -56, '18:00', 60, public.precio_turno(15, v_hoy + -56, '18:00', 60),
+        true, true, 4, '', now() + interval '-59 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_karim, -public.precio_turno(15, v_hoy + -56, '18:00', 60), 'reserva', 'Pádel Jardines de la Hípica · Doble 2', v_res, now() + interval '-59 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_ana, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_karim, 4, 'Individual', v_hoy + -59, '18:00', 60, public.precio_turno(15, v_hoy + -59, '18:00', 60),
+        false, false, 4, '', now() + interval '-62 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_karim, -public.precio_turno(15, v_hoy + -59, '18:00', 60), 'reserva', 'Pádel Jardines de la Hípica · Individual', v_res, now() + interval '-62 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_karim, 4, 'Doble 1', v_hoy + -62, '18:00', 60, public.precio_turno(15, v_hoy + -62, '18:00', 60),
+        true, true, 4, '', now() + interval '-65 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_karim, -public.precio_turno(15, v_hoy + -62, '18:00', 60), 'reserva', 'Pádel Jardines de la Hípica · Doble 1', v_res, now() + interval '-65 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_youssef, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_karim, 4, 'Doble 2', v_hoy + -65, '18:00', 60, public.precio_turno(15, v_hoy + -65, '18:00', 60),
+        false, false, 4, '', now() + interval '-68 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_karim, -public.precio_turno(15, v_hoy + -65, '18:00', 60), 'reserva', 'Pádel Jardines de la Hípica · Doble 2', v_res, now() + interval '-68 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_karim, 4, 'Individual', v_hoy + -68, '18:00', 60, public.precio_turno(15, v_hoy + -68, '18:00', 60),
+        true, true, 4, '', now() + interval '-71 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_karim, -public.precio_turno(15, v_hoy + -68, '18:00', 60), 'reserva', 'Pádel Jardines de la Hípica · Individual', v_res, now() + interval '-71 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_sara, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_karim, 4, 'Doble 1', v_hoy + -71, '18:00', 60, public.precio_turno(15, v_hoy + -71, '18:00', 60),
+        false, false, 4, '', now() + interval '-74 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_karim, -public.precio_turno(15, v_hoy + -71, '18:00', 60), 'reserva', 'Pádel Jardines de la Hípica · Doble 1', v_res, now() + interval '-74 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_karim, 4, 'Doble 2', v_hoy + -74, '18:00', 60, public.precio_turno(15, v_hoy + -74, '18:00', 60),
+        true, true, 4, '', now() + interval '-77 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_karim, -public.precio_turno(15, v_hoy + -74, '18:00', 60), 'reserva', 'Pádel Jardines de la Hípica · Doble 2', v_res, now() + interval '-77 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_ana, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_karim, 4, 'Individual', v_hoy + -77, '18:00', 60, public.precio_turno(15, v_hoy + -77, '18:00', 60),
+        false, false, 4, '', now() + interval '-80 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_karim, -public.precio_turno(15, v_hoy + -77, '18:00', 60), 'reserva', 'Pádel Jardines de la Hípica · Individual', v_res, now() + interval '-80 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_karim, 4, 'Doble 1', v_hoy + -80, '18:00', 60, public.precio_turno(15, v_hoy + -80, '18:00', 60),
+        true, true, 4, '', now() + interval '-83 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_karim, -public.precio_turno(15, v_hoy + -80, '18:00', 60), 'reserva', 'Pádel Jardines de la Hípica · Doble 1', v_res, now() + interval '-83 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_youssef, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_karim, 4, 'Doble 2', v_hoy + -83, '18:00', 60, public.precio_turno(15, v_hoy + -83, '18:00', 60),
+        false, false, 4, '', now() + interval '-86 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_karim, -public.precio_turno(15, v_hoy + -83, '18:00', 60), 'reserva', 'Pádel Jardines de la Hípica · Doble 2', v_res, now() + interval '-86 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_karim, 4, 'Individual', v_hoy + -86, '18:00', 60, public.precio_turno(15, v_hoy + -86, '18:00', 60),
+        true, true, 4, '', now() + interval '-89 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_karim, -public.precio_turno(15, v_hoy + -86, '18:00', 60), 'reserva', 'Pádel Jardines de la Hípica · Individual', v_res, now() + interval '-89 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_sara, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_karim, 4, 'Doble 1', v_hoy + -89, '18:00', 60, public.precio_turno(15, v_hoy + -89, '18:00', 60),
+        false, false, 4, '', now() + interval '-92 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_karim, -public.precio_turno(15, v_hoy + -89, '18:00', 60), 'reserva', 'Pádel Jardines de la Hípica · Doble 1', v_res, now() + interval '-92 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_ana, 1, 'Pista 1', v_hoy + -44, '19:00', 60, public.precio_turno(20, v_hoy + -44, '19:00', 60),
+        true, true, 4, '', now() + interval '-47 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_ana, -public.precio_turno(20, v_hoy + -44, '19:00', 60), 'reserva', 'Pádel La Marina · Pista 1', v_res, now() + interval '-47 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_karim, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_ana, 1, 'Pista 2', v_hoy + -47, '19:00', 60, public.precio_turno(20, v_hoy + -47, '19:00', 60),
+        false, false, 4, '', now() + interval '-50 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_ana, -public.precio_turno(20, v_hoy + -47, '19:00', 60), 'reserva', 'Pádel La Marina · Pista 2', v_res, now() + interval '-50 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_ana, 1, 'Pista 3', v_hoy + -50, '19:00', 60, public.precio_turno(20, v_hoy + -50, '19:00', 60),
+        true, true, 4, '', now() + interval '-53 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_ana, -public.precio_turno(20, v_hoy + -50, '19:00', 60), 'reserva', 'Pádel La Marina · Pista 3', v_res, now() + interval '-53 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_sara, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_ana, 1, 'Pista 1', v_hoy + -53, '19:00', 60, public.precio_turno(20, v_hoy + -53, '19:00', 60),
+        false, false, 4, '', now() + interval '-56 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_ana, -public.precio_turno(20, v_hoy + -53, '19:00', 60), 'reserva', 'Pádel La Marina · Pista 1', v_res, now() + interval '-56 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_ana, 1, 'Pista 2', v_hoy + -56, '19:00', 60, public.precio_turno(20, v_hoy + -56, '19:00', 60),
+        true, true, 4, '', now() + interval '-59 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_ana, -public.precio_turno(20, v_hoy + -56, '19:00', 60), 'reserva', 'Pádel La Marina · Pista 2', v_res, now() + interval '-59 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_karim, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_ana, 1, 'Pista 3', v_hoy + -59, '19:00', 60, public.precio_turno(20, v_hoy + -59, '19:00', 60),
+        false, false, 4, '', now() + interval '-62 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_ana, -public.precio_turno(20, v_hoy + -59, '19:00', 60), 'reserva', 'Pádel La Marina · Pista 3', v_res, now() + interval '-62 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_ana, 1, 'Pista 1', v_hoy + -62, '19:00', 60, public.precio_turno(20, v_hoy + -62, '19:00', 60),
+        true, true, 4, '', now() + interval '-65 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_ana, -public.precio_turno(20, v_hoy + -62, '19:00', 60), 'reserva', 'Pádel La Marina · Pista 1', v_res, now() + interval '-65 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_sara, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_ana, 1, 'Pista 2', v_hoy + -65, '19:00', 60, public.precio_turno(20, v_hoy + -65, '19:00', 60),
+        false, false, 4, '', now() + interval '-68 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_ana, -public.precio_turno(20, v_hoy + -65, '19:00', 60), 'reserva', 'Pádel La Marina · Pista 2', v_res, now() + interval '-68 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_ana, 1, 'Pista 3', v_hoy + -68, '19:00', 60, public.precio_turno(20, v_hoy + -68, '19:00', 60),
+        true, true, 4, '', now() + interval '-71 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_ana, -public.precio_turno(20, v_hoy + -68, '19:00', 60), 'reserva', 'Pádel La Marina · Pista 3', v_res, now() + interval '-71 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_karim, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_ana, 1, 'Pista 1', v_hoy + -71, '19:00', 60, public.precio_turno(20, v_hoy + -71, '19:00', 60),
+        false, false, 4, '', now() + interval '-74 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_ana, -public.precio_turno(20, v_hoy + -71, '19:00', 60), 'reserva', 'Pádel La Marina · Pista 1', v_res, now() + interval '-74 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_ana, 1, 'Pista 2', v_hoy + -74, '19:00', 60, public.precio_turno(20, v_hoy + -74, '19:00', 60),
+        true, true, 4, '', now() + interval '-77 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_ana, -public.precio_turno(20, v_hoy + -74, '19:00', 60), 'reserva', 'Pádel La Marina · Pista 2', v_res, now() + interval '-77 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_sara, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_paula, 7, 'Pista 1', v_hoy + -44, '10:00', 60, public.precio_turno(15, v_hoy + -44, '10:00', 60),
+        true, true, 4, '', now() + interval '-47 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_paula, -public.precio_turno(15, v_hoy + -44, '10:00', 60), 'reserva', 'Club de Tenis Perla del Mediterráneo · Pista 1', v_res, now() + interval '-47 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_ivan, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_paula, 7, 'Pista 2', v_hoy + -47, '10:00', 60, public.precio_turno(15, v_hoy + -47, '10:00', 60),
+        false, false, 4, '', now() + interval '-50 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_paula, -public.precio_turno(15, v_hoy + -47, '10:00', 60), 'reserva', 'Club de Tenis Perla del Mediterráneo · Pista 2', v_res, now() + interval '-50 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_paula, 7, 'Pista 3', v_hoy + -50, '10:00', 60, public.precio_turno(15, v_hoy + -50, '10:00', 60),
+        true, true, 4, '', now() + interval '-53 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_paula, -public.precio_turno(15, v_hoy + -50, '10:00', 60), 'reserva', 'Club de Tenis Perla del Mediterráneo · Pista 3', v_res, now() + interval '-53 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_lucia, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_paula, 7, 'Pista 1', v_hoy + -53, '10:00', 60, public.precio_turno(15, v_hoy + -53, '10:00', 60),
+        false, false, 4, '', now() + interval '-56 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_paula, -public.precio_turno(15, v_hoy + -53, '10:00', 60), 'reserva', 'Club de Tenis Perla del Mediterráneo · Pista 1', v_res, now() + interval '-56 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_paula, 7, 'Pista 2', v_hoy + -56, '10:00', 60, public.precio_turno(15, v_hoy + -56, '10:00', 60),
+        true, true, 4, '', now() + interval '-59 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_paula, -public.precio_turno(15, v_hoy + -56, '10:00', 60), 'reserva', 'Club de Tenis Perla del Mediterráneo · Pista 2', v_res, now() + interval '-59 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_ivan, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_paula, 7, 'Pista 3', v_hoy + -59, '10:00', 60, public.precio_turno(15, v_hoy + -59, '10:00', 60),
+        false, false, 4, '', now() + interval '-62 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_paula, -public.precio_turno(15, v_hoy + -59, '10:00', 60), 'reserva', 'Club de Tenis Perla del Mediterráneo · Pista 3', v_res, now() + interval '-62 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_paula, 7, 'Pista 1', v_hoy + -62, '10:00', 60, public.precio_turno(15, v_hoy + -62, '10:00', 60),
+        true, true, 4, '', now() + interval '-65 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_paula, -public.precio_turno(15, v_hoy + -62, '10:00', 60), 'reserva', 'Club de Tenis Perla del Mediterráneo · Pista 1', v_res, now() + interval '-65 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_lucia, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_paula, 7, 'Pista 2', v_hoy + -65, '10:00', 60, public.precio_turno(15, v_hoy + -65, '10:00', 60),
+        false, false, 4, '', now() + interval '-68 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_paula, -public.precio_turno(15, v_hoy + -65, '10:00', 60), 'reserva', 'Club de Tenis Perla del Mediterráneo · Pista 2', v_res, now() + interval '-68 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_ivan, 8, 'Pista 1', v_hoy + -44, '20:00', 60, public.precio_turno(15, v_hoy + -44, '20:00', 60),
+        true, true, 4, '', now() + interval '-47 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_ivan, -public.precio_turno(15, v_hoy + -44, '20:00', 60), 'reserva', 'Club de Tenis Ceuta · Pista 1', v_res, now() + interval '-47 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_paula, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_ivan, 8, 'Pista 2', v_hoy + -47, '20:00', 60, public.precio_turno(15, v_hoy + -47, '20:00', 60),
+        false, false, 4, '', now() + interval '-50 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_ivan, -public.precio_turno(15, v_hoy + -47, '20:00', 60), 'reserva', 'Club de Tenis Ceuta · Pista 2', v_res, now() + interval '-50 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_ivan, 8, 'Pista 3', v_hoy + -50, '20:00', 60, public.precio_turno(15, v_hoy + -50, '20:00', 60),
+        true, true, 4, '', now() + interval '-53 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_ivan, -public.precio_turno(15, v_hoy + -50, '20:00', 60), 'reserva', 'Club de Tenis Ceuta · Pista 3', v_res, now() + interval '-53 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_paula, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_ivan, 8, 'Pista 1', v_hoy + -53, '20:00', 60, public.precio_turno(15, v_hoy + -53, '20:00', 60),
+        false, false, 4, '', now() + interval '-56 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_ivan, -public.precio_turno(15, v_hoy + -53, '20:00', 60), 'reserva', 'Club de Tenis Ceuta · Pista 1', v_res, now() + interval '-56 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_ivan, 8, 'Pista 2', v_hoy + -56, '20:00', 60, public.precio_turno(15, v_hoy + -56, '20:00', 60),
+        true, true, 4, '', now() + interval '-59 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_ivan, -public.precio_turno(15, v_hoy + -56, '20:00', 60), 'reserva', 'Club de Tenis Ceuta · Pista 2', v_res, now() + interval '-59 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_paula, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_ivan, 8, 'Pista 3', v_hoy + -59, '20:00', 60, public.precio_turno(15, v_hoy + -59, '20:00', 60),
+        false, false, 4, '', now() + interval '-62 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_ivan, -public.precio_turno(15, v_hoy + -59, '20:00', 60), 'reserva', 'Club de Tenis Ceuta · Pista 3', v_res, now() + interval '-62 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_lucia, 6, 'Pista 1', v_hoy + -44, '11:00', 60, public.precio_turno(15, v_hoy + -44, '11:00', 60),
+        true, true, 4, '', now() + interval '-47 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_lucia, -public.precio_turno(15, v_hoy + -44, '11:00', 60), 'reserva', 'Club de Tenis y Pádel Loma Margarita · Pista 1', v_res, now() + interval '-47 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_ivan, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_lucia, 6, 'Pista 2', v_hoy + -47, '11:00', 60, public.precio_turno(15, v_hoy + -47, '11:00', 60),
+        false, false, 4, '', now() + interval '-50 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_lucia, -public.precio_turno(15, v_hoy + -47, '11:00', 60), 'reserva', 'Club de Tenis y Pádel Loma Margarita · Pista 2', v_res, now() + interval '-50 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_lucia, 6, 'Pista 3', v_hoy + -50, '11:00', 60, public.precio_turno(15, v_hoy + -50, '11:00', 60),
+        true, true, 4, '', now() + interval '-53 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_lucia, -public.precio_turno(15, v_hoy + -50, '11:00', 60), 'reserva', 'Club de Tenis y Pádel Loma Margarita · Pista 3', v_res, now() + interval '-53 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_ivan, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_lucia, 6, 'Pista 4', v_hoy + -53, '11:00', 60, public.precio_turno(15, v_hoy + -53, '11:00', 60),
+        false, false, 4, '', now() + interval '-56 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_lucia, -public.precio_turno(15, v_hoy + -53, '11:00', 60), 'reserva', 'Club de Tenis y Pádel Loma Margarita · Pista 4', v_res, now() + interval '-56 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_lucia, 6, 'Pista 5', v_hoy + -56, '11:00', 60, public.precio_turno(15, v_hoy + -56, '11:00', 60),
+        true, true, 4, '', now() + interval '-59 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_lucia, -public.precio_turno(15, v_hoy + -56, '11:00', 60), 'reserva', 'Club de Tenis y Pádel Loma Margarita · Pista 5', v_res, now() + interval '-59 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_ivan, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_youssef, 1, 'Pista 1', v_hoy + -44, '17:00', 60, public.precio_turno(20, v_hoy + -44, '17:00', 60),
+        true, true, 4, '', now() + interval '-47 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_youssef, -public.precio_turno(20, v_hoy + -44, '17:00', 60), 'reserva', 'Pádel La Marina · Pista 1', v_res, now() + interval '-47 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_hamza, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_youssef, 1, 'Pista 2', v_hoy + -47, '17:00', 60, public.precio_turno(20, v_hoy + -47, '17:00', 60),
+        false, false, 4, '', now() + interval '-50 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_youssef, -public.precio_turno(20, v_hoy + -47, '17:00', 60), 'reserva', 'Pádel La Marina · Pista 2', v_res, now() + interval '-50 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_youssef, 1, 'Pista 3', v_hoy + -50, '17:00', 60, public.precio_turno(20, v_hoy + -50, '17:00', 60),
+        true, true, 4, '', now() + interval '-53 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_youssef, -public.precio_turno(20, v_hoy + -50, '17:00', 60), 'reserva', 'Pádel La Marina · Pista 3', v_res, now() + interval '-53 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_hamza, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_youssef, 1, 'Pista 1', v_hoy + -53, '17:00', 60, public.precio_turno(20, v_hoy + -53, '17:00', 60),
+        false, false, 4, '', now() + interval '-56 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_youssef, -public.precio_turno(20, v_hoy + -53, '17:00', 60), 'reserva', 'Pádel La Marina · Pista 1', v_res, now() + interval '-56 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_hamza, 16, 'Kayak 1', v_hoy + -44, '12:00', 60, public.precio_turno(12, v_hoy + -44, '12:00', 60),
+        true, true, 4, '', now() + interval '-47 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_hamza, -public.precio_turno(12, v_hoy + -44, '12:00', 60), 'reserva', 'Kayak con Ceuta Kayak · Kayak 1', v_res, now() + interval '-47 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_marta, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_hamza, 16, 'Kayak 2', v_hoy + -47, '12:00', 60, public.precio_turno(12, v_hoy + -47, '12:00', 60),
+        false, false, 4, '', now() + interval '-50 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_hamza, -public.precio_turno(12, v_hoy + -47, '12:00', 60), 'reserva', 'Kayak con Ceuta Kayak · Kayak 2', v_res, now() + interval '-50 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_hamza, 16, 'Kayak 3', v_hoy + -50, '12:00', 60, public.precio_turno(12, v_hoy + -50, '12:00', 60),
+        true, true, 4, '', now() + interval '-53 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_hamza, -public.precio_turno(12, v_hoy + -50, '12:00', 60), 'reserva', 'Kayak con Ceuta Kayak · Kayak 3', v_res, now() + interval '-53 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_marta, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_sara, 5, 'Pista de demostración', v_hoy + -44, '16:00', 60, public.precio_turno(12, v_hoy + -44, '16:00', 60),
+        false, false, 4, '', now() + interval '-47 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_sara, -public.precio_turno(12, v_hoy + -44, '16:00', 60), 'reserva', 'Pádel Loma Colmenar · Pista de demostración', v_res, now() + interval '-47 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_sara, 5, 'Pista de demostración', v_hoy + -47, '16:00', 60, public.precio_turno(12, v_hoy + -47, '16:00', 60),
+        false, false, 4, '', now() + interval '-50 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_sara, -public.precio_turno(12, v_hoy + -47, '16:00', 60), 'reserva', 'Pádel Loma Colmenar · Pista de demostración', v_res, now() + interval '-50 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_marta, 17, 'Tabla 1', v_hoy + -44, '13:00', 60, public.precio_turno(15, v_hoy + -44, '13:00', 60),
+        false, false, 4, '', now() + interval '-47 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_marta, -public.precio_turno(15, v_hoy + -44, '13:00', 60), 'reserva', 'Paddle surf con Ceuta Kayak · Tabla 1', v_res, now() + interval '-47 days');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_marta, 17, 'Tabla 2', v_hoy + -47, '13:00', 60, public.precio_turno(15, v_hoy + -47, '13:00', 60),
+        false, false, 4, '', now() + interval '-50 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_marta, -public.precio_turno(15, v_hoy + -47, '13:00', 60), 'reserva', 'Paddle surf con Ceuta Kayak · Tabla 2', v_res, now() + interval '-50 days');
 
     -- un bloqueo del gestor (mantenimiento)
     insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, tipo, nota)
