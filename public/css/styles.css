@@ -82,7 +82,12 @@ a {
 
 nav {
     display: flex;
-    gap: 30px;
+    gap: clamp(14px, 1.7vw, 30px);
+}
+
+nav a,
+.nav-actions .login-btn {
+    white-space: nowrap;
 }
 
 nav a {
@@ -3462,4 +3467,194 @@ nav a:focus-visible {
     .ranking-level { display: none; }
     .player-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .community-me { width: 100%; }
+}
+
+.solidaria-form {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    align-items: end;
+    gap: 10px;
+}
+
+.solidaria-form label {
+    display: grid;
+    gap: 4px;
+}
+
+.solidaria-form button { margin-bottom: 10px; }
+
+/* Parte de viento (deportes náuticos) */
+.wind-panel {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 16px;
+    padding: 14px 16px;
+    border: 1px solid var(--accent-border);
+    border-radius: 14px;
+    background: var(--accent-bg);
+}
+
+.wind-panel h3 { font-size: 1rem; }
+.wind-now { font-size: 14px; }
+
+.wind-hours {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 2px 0 6px;
+    list-style: none;
+}
+
+.wind-hour {
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    min-width: 58px;
+    padding: 6px 4px;
+    border-radius: 10px;
+    background: var(--white);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    border-top: 3px solid transparent;
+}
+
+.wind-hour small { color: var(--text); font-size: 11px; }
+.wind-bueno { border-top-color: #16a34a; }
+.wind-moderado { border-top-color: #d97706; }
+.wind-malo { border-top-color: #dc2626; }
+
+.wind-arrow {
+    display: inline-block;
+    font-weight: 800;
+    color: var(--primary-dark);
+}
+
+/* Campana de avisos */
+.nav-bell {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--white);
+    font-size: 18px;
+}
+
+.nav-bell:hover { border-color: var(--accent-border); }
+.nav-bell:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.bell-count {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 20px;
+    padding: 1px 5px;
+    border-radius: 999px;
+    background: #dc2626;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 18px;
+}
+
+.avisos-panel {
+    position: fixed;
+    top: 84px;
+    right: max(16px, calc((100vw - 1200px) / 2));
+    z-index: 200;
+    display: grid;
+    width: min(420px, calc(100vw - 32px));
+    max-height: calc(100vh - 110px);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: var(--white);
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+    overflow: hidden;
+}
+
+.avisos-panel[hidden] { display: none; }
+
+.avisos-panel header,
+.avisos-panel footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.avisos-panel footer { border-top: 1px solid var(--border); border-bottom: none; }
+.avisos-panel footer .register-btn { width: 100%; font-size: 14px; }
+.avisos-panel h2 { font-size: 1.1rem; }
+
+.avisos-panel ul {
+    overflow-y: auto;
+    list-style: none;
+    padding: 0;
+}
+
+.avisos-panel li a {
+    display: flex;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--dark);
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.avisos-panel li a:hover { background: var(--light); }
+.avisos-panel li a > span:last-child { display: grid; gap: 2px; }
+.avisos-panel small { color: var(--text); font-size: 12px; }
+.aviso-icono { font-size: 20px; }
+.aviso-nuevo a { background: var(--accent-bg); }
+.aviso-nuevo a > span:last-child > span { font-weight: 600; }
+.aviso-vacio { padding: 18px 16px; color: var(--text); font-size: 14px; }
+
+@media (max-width: 800px) {
+    .avisos-panel { top: 72px; right: 16px; }
+}
+
+/* Panel del gestor */
+.gestor-picker {
+    display: grid;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.gestor-picker select {
+    min-width: 240px;
+    padding: 10px 12px;
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    font: inherit;
+    font-weight: 600;
+}
+
+.gestor-leyenda .schedule-state {
+    display: inline-block;
+    width: auto;
+    min-width: 0;
+    padding: 2px 10px;
+}
+
+.schedule-state.gestor-bloqueo {
+    background: #fef3c7;
+    border-color: #fcd34d;
+    color: #92400e;
+}
+
+.schedule-state.gestor-subasta {
+    background: #ede9fe;
+    border-color: #c4b5fd;
+    color: #5b21b6;
+}
+
+.gestor-page .schedule-state {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }

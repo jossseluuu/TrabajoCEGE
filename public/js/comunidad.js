@@ -74,7 +74,7 @@ function tarjetaPartido(r, yo) {
                 </p>
                 <div class="match-players" aria-label="${ocupadas} de ${r.plazas} jugadores">
                     ${jugadores.map((j) => `<button type="button" class="player-dot" data-jugador="${j.id}" title="${esc(j.nombre)}">${Comunidad.avatar(j, "avatar-sm")}</button>`).join("")}
-                    ${Array.from({ length: Math.max(0, r.plazas - ocupadas) }, () => `<span class="avatar avatar-sm avatar-empty" aria-hidden="true">+</span>`).join("")}
+                    ${Array.from({ length: Math.min(4, Math.max(0, r.plazas - ocupadas)) }, () => `<span class="avatar avatar-sm avatar-empty" aria-hidden="true">+</span>`).join("")}
                     <span class="match-slots">${ocupadas}/${r.plazas} · ${r.libres ? `${r.libres} ${r.libres === 1 ? "plaza libre" : "plazas libres"}` : "completo"}</span>
                 </div>
             </div>

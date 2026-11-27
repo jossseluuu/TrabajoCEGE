@@ -89,7 +89,7 @@ create table if not exists public.catalogo_pistas (
     precio          integer not null check (precio >= 0),   -- €/h en hora punta
     apertura        text    not null default '09:00',
     cierre          text    not null default '22:00',
-    reservable      boolean not null default true,   -- false: instalación pública (ICD)
+    reservable      boolean not null default true,   -- false: no se reserva en CeutaPlay
     subastable      boolean not null default true,   -- se puede revender
     automatica      boolean not null default false,  -- sale sola a subasta de última hora
     primary key (instalacion_id, pista)
@@ -116,15 +116,15 @@ values
     (4, 'Doble 2', 'Pádel Jardines de la Hípica', 'Pádel', 15, '09:00', '22:00', true, true, true),
     (4, 'Individual', 'Pádel Jardines de la Hípica', 'Pádel', 15, '09:00', '22:00', true, true, true),
     (5, 'Pista de demostración', 'Pádel Loma Colmenar', 'Pádel', 12, '09:00', '22:00', true, true, true),
-    (2, 'Campo José Benoliel', 'Campo Federativo José Benoliel', 'Fútbol', 45, '09:00', '22:00', false, false, false),
-    (9, 'Pista de fútbol sala', 'Pista Polideportiva José Zurrón', 'Fútbol', 12, '09:00', '22:00', false, false, false),
-    (10, 'Tuhami Al Lal', 'Campos de Fútbol del Príncipe', 'Fútbol', 25, '09:00', '22:00', false, false, false),
-    (10, 'Aiman Aomar', 'Campos de Fútbol del Príncipe', 'Fútbol', 25, '09:00', '22:00', false, false, false),
-    (11, 'Pista de fútbol sala', 'Pista Polígono Virgen de África', 'Fútbol', 12, '09:00', '22:00', false, false, false),
-    (12, 'Campo José Martínez Pirri', 'Campo José Martínez Pirri', 'Fútbol', 45, '09:00', '22:00', false, false, false),
-    (13, 'Campo Emilio Cózar', 'Campo Emilio Cózar', 'Fútbol', 25, '09:00', '22:00', false, false, false),
-    (14, 'Pista polideportiva', 'Pista Deportiva Juan XXIII', 'Fútbol', 15, '09:00', '22:00', false, false, false),
-    (15, 'Pista cubierta de fútbol sala', 'Polideportivo Santa Amelia', 'Fútbol', 20, '09:00', '22:00', false, false, false),
+    (2, 'Campo José Benoliel', 'Campo Federativo José Benoliel', 'Fútbol', 45, '09:00', '22:00', true, false, false),
+    (9, 'Pista de fútbol sala', 'Pista Polideportiva José Zurrón', 'Fútbol', 12, '09:00', '22:00', true, false, false),
+    (10, 'Tuhami Al Lal', 'Campos de Fútbol del Príncipe', 'Fútbol', 25, '09:00', '22:00', true, false, false),
+    (10, 'Aiman Aomar', 'Campos de Fútbol del Príncipe', 'Fútbol', 25, '09:00', '22:00', true, false, false),
+    (11, 'Pista de fútbol sala', 'Pista Polígono Virgen de África', 'Fútbol', 12, '09:00', '22:00', true, false, false),
+    (12, 'Campo José Martínez Pirri', 'Campo José Martínez Pirri', 'Fútbol', 45, '09:00', '22:00', true, false, false),
+    (13, 'Campo Emilio Cózar', 'Campo Emilio Cózar', 'Fútbol', 25, '09:00', '22:00', true, false, false),
+    (14, 'Pista polideportiva', 'Pista Deportiva Juan XXIII', 'Fútbol', 15, '09:00', '22:00', true, false, false),
+    (15, 'Pista cubierta de fútbol sala', 'Polideportivo Santa Amelia', 'Fútbol', 20, '09:00', '22:00', true, false, false),
     (3, 'Pista 1', 'Tenis La Marina', 'Tenis', 15, '09:00', '22:00', true, true, true),
     (3, 'Pista 2', 'Tenis La Marina', 'Tenis', 15, '09:00', '22:00', true, true, true),
     (6, 'Pista 1', 'Club de Tenis y Pádel Loma Margarita', 'Tenis', 15, '09:00', '22:00', true, true, true),
@@ -333,15 +333,17 @@ grant execute on function public.admin_fijar_saldo(uuid, numeric, text) to authe
 -- =====================================================================
 
 alter table public.reservas add column if not exists duracion_min integer not null default 60;
-alter table public.reservas drop constraint if exists reservas_duracion_check;
-alter table public.reservas add constraint reservas_duracion_check
-    check (duracion_min between 30 and 180 and duracion_min % 30 = 0);
 alter table public.reservas add column if not exists importe numeric(12,2) not null default 0;
 alter table public.reservas add column if not exists publica boolean not null default false;
 alter table public.reservas add column if not exists plazas smallint not null default 4 check (plazas between 1 and 22);
 alter table public.reservas add column if not exists tipo text not null default 'normal';
 alter table public.reservas drop constraint if exists reservas_tipo_check;
 alter table public.reservas add constraint reservas_tipo_check check (tipo in ('normal', 'bloqueo', 'solidaria'));
+-- Reservas de 30 min a 3 h; los bloqueos de la instalación, hasta 12 h
+alter table public.reservas drop constraint if exists reservas_duracion_check;
+alter table public.reservas add constraint reservas_duracion_check
+    check (duracion_min % 30 = 0 and duracion_min >= 30
+           and duracion_min <= case when tipo = 'bloqueo' then 720 else 180 end);
 alter table public.reservas add column if not exists nota text not null default '' check (char_length(nota) <= 140);
 
 -- Antes había una pista por turno de 1 h; ahora se comprueba que no se solapen
@@ -595,7 +597,7 @@ begin
         raise exception 'Esa pista no existe.';
     end if;
     if not v_pista.reservable then
-        raise exception 'Esta instalación es pública: se reserva en el Instituto Ceutí de Deportes.';
+        raise exception 'Esta pista no se puede reservar en CeutaPlay.';
     end if;
     if p_hora is null or p_hora !~ '^\d{2}:\d{2}$' or public.minutos(p_hora) % 30 <> 0 then
         raise exception 'Las reservas empiezan a en punto o a y media.';
@@ -779,6 +781,12 @@ declare
 begin
     if not (public.es_gestor(p_instalacion) or public.es_admin()) then
         raise exception 'Solo los gestores de esta instalación pueden bloquear turnos.';
+    end if;
+    if p_hora !~ '^\d{2}:(00|30)$' or p_duracion is null or p_duracion not between 30 and 720 or p_duracion % 30 <> 0 then
+        raise exception 'Elige una hora en punto o y media y una duración de 30 min a 12 h.';
+    end if;
+    if not exists (select 1 from public.catalogo_pistas c where c.instalacion_id = p_instalacion and c.pista = p_pista) then
+        raise exception 'Elige una pista de la instalación.';
     end if;
     insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, tipo, nota)
     values (auth.uid(), p_instalacion, p_pista, p_fecha, p_hora, p_duracion, 0, 'bloqueo',

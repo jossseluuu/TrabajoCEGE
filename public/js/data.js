@@ -70,7 +70,7 @@ const INSTALACIONES = [
         mapa: "Campo Federativo José Benoliel, Ceuta",
         puntoMapa: [35.88968, -5.33289],
         deporte: "Fútbol",
-        gestion: "icd", // instalación pública: se reserva en el ICD
+        gestion: "icd", // instalación municipal: CeutaPlay tramita la reserva con el ICD
         pistas: ["Campo José Benoliel"],
         precioPrueba: 45,
         detalle: "Campo federativo de césped artificial.",
@@ -84,7 +84,7 @@ const INSTALACIONES = [
         puntoMapa: [35.88846, -5.3312],
         notaPuntoMapa: "Marcador orientativo en la barriada José Zurrón.",
         deporte: "Fútbol",
-        gestion: "icd", // instalación pública: se reserva en el ICD
+        gestion: "icd", // instalación municipal: CeutaPlay tramita la reserva con el ICD
         pistas: ["Pista de fútbol sala"],
         precioPrueba: 12,
         detalle: "Pista polideportiva al aire libre utilizada para fútbol sala.",
@@ -98,7 +98,7 @@ const INSTALACIONES = [
         puntoMapa: [35.88352, -5.34533],
         notaPuntoMapa: "Marcador orientativo en Puente del Quemadero.",
         deporte: "Fútbol",
-        gestion: "icd", // instalación pública: se reserva en el ICD
+        gestion: "icd", // instalación municipal: CeutaPlay tramita la reserva con el ICD
         pistas: ["Tuhami Al Lal", "Aiman Aomar"],
         precioPrueba: 25,
         detalle: "Dos campos de fútbol 7 con césped artificial, iluminación y vestuarios.",
@@ -112,7 +112,7 @@ const INSTALACIONES = [
         puntoMapa: [35.88793, -5.32514],
         notaPuntoMapa: "Marcador orientativo en la avenida de Barcelona.",
         deporte: "Fútbol",
-        gestion: "icd", // instalación pública: se reserva en el ICD
+        gestion: "icd", // instalación municipal: CeutaPlay tramita la reserva con el ICD
         pistas: ["Pista de fútbol sala"],
         precioPrueba: 12,
         detalle: "Pista de barrio utilizada para fútbol sala y baloncesto.",
@@ -125,7 +125,7 @@ const INSTALACIONES = [
         mapa: "Campo de Fútbol José Martínez Pirri, Ceuta",
         puntoMapa: [35.8916, -5.29923],
         deporte: "Fútbol",
-        gestion: "icd", // instalación pública: se reserva en el ICD
+        gestion: "icd", // instalación municipal: CeutaPlay tramita la reserva con el ICD
         pistas: ["Campo José Martínez Pirri"],
         precioPrueba: 45,
         detalle: "Campo federativo conocido como el 54.",
@@ -138,7 +138,7 @@ const INSTALACIONES = [
         mapa: "Campo Emilio Cózar, Ciudad del Fútbol de Ceuta",
         puntoMapa: [35.8841, -5.3265],
         deporte: "Fútbol",
-        gestion: "icd", // instalación pública: se reserva en el ICD
+        gestion: "icd", // instalación municipal: CeutaPlay tramita la reserva con el ICD
         pistas: ["Campo Emilio Cózar"],
         precioPrueba: 25,
         detalle: "Campo federativo en la Ciudad del Fútbol de Ceuta.",
@@ -152,7 +152,7 @@ const INSTALACIONES = [
         puntoMapa: [35.87898, -5.32862],
         notaPuntoMapa: "Marcador orientativo en la barriada Juan XXIII.",
         deporte: "Fútbol",
-        gestion: "icd", // instalación pública: se reserva en el ICD
+        gestion: "icd", // instalación municipal: CeutaPlay tramita la reserva con el ICD
         pistas: ["Pista polideportiva"],
         precioPrueba: 15,
         detalle: "Pista polideportiva exterior junto al local social de la barriada.",
@@ -166,7 +166,7 @@ const INSTALACIONES = [
         puntoMapa: [35.88813, -5.34387],
         notaPuntoMapa: "Marcador orientativo en el entorno del CEIP Santa Amelia.",
         deporte: "Fútbol",
-        gestion: "icd", // instalación pública: se reserva en el ICD
+        gestion: "icd", // instalación municipal: CeutaPlay tramita la reserva con el ICD
         pistas: ["Pista cubierta de fútbol sala"],
         precioPrueba: 20,
         detalle: "Pabellón cubierto con gradas y pista de fútbol sala.",
@@ -370,8 +370,8 @@ const SUBASTA_AUTOMATICA = {
     horasAntes: 12,          // las pistas libres salen a subasta 12 h antes del turno
     cierreMinAntes: 15,      // la subasta se cierra 15 min antes de empezar
     descuentoSalida: 0.5,    // precio de salida = mitad del precio normal
-    // Instalaciones con reserva directa (centros privados). Las públicas del
-    // ICD no entran. Una instalación puede forzarlo con subastaAutomatica: true/false.
+    // Solo pádel y tenis (centros privados). Las municipales del ICD no salen
+    // a subasta. Una instalación puede forzarlo con subastaAutomatica: true/false.
     deportes: ["Pádel", "Tenis"],
 };
 
@@ -394,13 +394,17 @@ const TURNOS = {
     factorValle: 0.8,      // hora valle: 20 % más barata
 };
 
-// Instalaciones públicas (gestion: "icd"): no se reservan en CeutaPlay,
-// se redirige al Instituto Ceutí de Deportes. Cambia la dirección si el ICD
-// publica una página de reservas propia.
+// Instalaciones municipales (gestion: "icd"): se reservan en CeutaPlay igual
+// que el resto. CeutaPlay hace de intermediario y tramita la reserva con el
+// Instituto Ceutí de Deportes (en esta versión, simulado). No se revenden ni
+// salen a subasta.
 const URL_ICD = "https://www.ceuta.es/";
 
-const esInstalacionIcd = (i) => i && i.gestion === "icd";
-const esReservable = (i) => Boolean(i && i.pistas && i.pistas.length) && !esInstalacionIcd(i);
+const esInstalacionIcd = (i) => Boolean(i && i.gestion === "icd");
+const esReservable = (i) => Boolean(i && i.pistas && i.pistas.length);
+for (const i of INSTALACIONES) {
+    if (esInstalacionIcd(i) && i.subastable === undefined) i.subastable = false;
+}
 
 const aMinutos = (hora) => {
     const [h, m] = String(hora).split(":").map(Number);
@@ -551,6 +555,10 @@ const RESERVAS_DEMO = [
     { usuario: "sara", instalacionId: 1, pista: "Pista 3", dias: 7, hora: "18:00", duracion: 90, publica: true, plazas: 4,
       nota: "Partido para principiantes, sin presión." },
     { usuario: "nora", instalacionId: 8, pista: "Pista 3", dias: 8, hora: "19:30", duracion: 60 },
+    // instalación municipal (ICD), reservada a través de CeutaPlay
+    { usuario: "luis", instalacionId: 10, pista: "Tuhami Al Lal", dias: 4, hora: "20:00", duracion: 90, publica: true, plazas: 14,
+      nota: "Fútbol 7 en el Príncipe. Nos faltan cuatro.",
+      participantes: [{ usuario: "youssef", estado: "aceptado", mensaje: "Juego de lateral" }, { usuario: "hamza", estado: "aceptado", mensaje: "" }] },
 ];
 
 // Historial de partidos antiguos (hace 6 semanas o más) para que cada jugador

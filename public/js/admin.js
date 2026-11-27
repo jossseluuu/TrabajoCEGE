@@ -27,6 +27,7 @@ const estado = {
     filtroSubastas: "todas",
     filtroUsuarios: "todos",
     abiertas: new Set(), // subastas con el detalle de pujas desplegado
+    peticiones: [],      // peticiones de pista solidaria
     avisoServidor: "",
 };
 
@@ -558,6 +559,75 @@ function pintarNombres() {
     probarNombre();
 }
 
+// =====================================================================
+// RSC (pista solidaria, voluntariado) Y GESTORES DE INSTALACIONES
+// =====================================================================
+
+const ESTADO_PETICION = {
+    pendiente: ["⏳ Pendiente", "estado-activa"],
+    cumplida: ["✅ Pista cedida", "estado-finalizada"],
+    caducada: ["Caducada", "estado-cancelada"],
+    cancelada: ["Cancelada", "estado-cancelada"],
+};
+
+function pintarRsc() {
+    const entidades = estado.usuarios.filter((u) => u.entidad);
+    const porAcreditar = entidades.filter((u) => !u.entidadAcreditada);
+    $("cuenta-rsc").textContent = porAcreditar.length;
+    $("cuenta-rsc").hidden = !porAcreditar.length;
+    const cedidas = Store.todasLasReservas().filter((r) => r.tipo === "solidaria");
+    const sinPujas = Store.listarSubastas().filter((s) => s.tipo === "automatica" && s.estado === "finalizada" && !s.pujas.length);
+    const valorCedido = cedidas.reduce((n, r) => n + precioTurno(instalacion(r.facility), r.date, r.time, r.duracion || 60), 0);
+
+    $("rsc-stats").innerHTML =
+        stat("Entidades acreditadas", entidades.length - porAcreditar.length, porAcreditar.length ? `${porAcreditar.length} esperando acreditación` : "") +
+        stat("Peticiones pendientes", estado.peticiones.filter((p) => p.estado === "pendiente").length) +
+        stat("Pistas solidarias cedidas", cedidas.length, `valor ${formatoCC(valorCedido)}`) +
+        stat("Gestores", estado.usuarios.filter((u) => u.gestiona.length).length, "cuentas de instalaciones");
+
+    $("rsc-entidades").innerHTML = entidades.map((u) => `
+        <tr>
+            <td><strong>${esc(u.entidad)}</strong></td>
+            <td>${esc(u.nombre)}<br><small>${esc(u.email)}</small></td>
+            <td class="num">${cedidas.filter((r) => r.userId === u.id).length}</td>
+            <td>${u.entidadAcreditada ? `<span class="admin-estado estado-finalizada">Acreditada</span>` : `<span class="admin-estado estado-activa">Por revisar</span>`}</td>
+            <td>${u.entidadAcreditada
+                ? boton("retirar-entidad", "Retirar acreditación", { id: u.id })
+                : boton("acreditar-entidad", "Acreditar", { id: u.id }, "admin-action admin-action-ok")}</td>
+        </tr>`).join("") || filaVacia(5, "Ninguna entidad lo ha solicitado todavía. Se solicita desde «Mi perfil».");
+
+    $("rsc-peticiones").innerHTML = estado.peticiones.map((p) => {
+        const [texto, clase] = ESTADO_PETICION[p.estado] || [p.estado, ""];
+        return `<tr>
+            <td>${formatoDia(p.fecha)}</td><td>${esc(p.entidad)}</td><td>${esc(p.deporte)}</td>
+            <td>${p.instalacionId ? esc(nombreInstalacion(p.instalacionId)) : "Cualquiera"}</td>
+            <td>${p.desde}–${p.hasta}</td><td><span class="admin-estado ${clase}">${texto}</span></td></tr>`;
+    }).join("") || filaVacia(6, `Sin peticiones.${sinPujas.length ? ` Hay ${sinPujas.length} pista(s) de última hora que se quedaron sin pujas.` : ""}`);
+
+    // voluntariado: se conserva lo elegido al repintar
+    const lista = $("rsc-voluntarios-lista");
+    const elegidos = new Set([...lista.selectedOptions].map((o) => o.value));
+    lista.replaceChildren(...estado.usuarios.filter((u) => !u.admin && !u.bloqueado)
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, "es"))
+        .map((u) => { const o = new Option(`${u.nombre} (${u.email})`, u.id); o.selected = elegidos.has(u.id); return o; }));
+
+    // gestores
+    const selInst = $("rsc-gestor-instalacion");
+    const selUsu = $("rsc-gestor-usuario");
+    const instElegida = selInst.value;
+    const usuElegido = selUsu.value;
+    selInst.replaceChildren(...INSTALACIONES.filter(esReservable).map((i) => new Option(i.nombre, i.id)));
+    selUsu.replaceChildren(...estado.usuarios.filter((u) => !u.admin)
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, "es")).map((u) => new Option(`${u.nombre} (${u.email})`, u.id)));
+    if (instElegida) selInst.value = instElegida;
+    if (usuElegido) selUsu.value = usuElegido;
+    const gestores = estado.usuarios.flatMap((u) => u.gestiona.map((id) => ({ u, id })));
+    $("rsc-gestores").innerHTML = gestores.map(({ u, id }) => `
+        <li><span>🏟️ <strong>${esc(nombreInstalacion(id))}</strong> · ${esc(u.nombre)} <small>(${esc(u.email)})</small></span>
+            ${boton("quitar-gestor", "Quitar", { id: u.id, instalacion: id })}</li>`).join("")
+        || `<li class="admin-hint">Ninguna instalación tiene gestor todavía.</li>`;
+}
+
 function probarNombre() {
     const nombre = $("nombres-probar").value;
     const resultado = $("nombres-resultado");
@@ -623,6 +693,7 @@ const pintores = {
     usuarios: pintarUsuarios,
     interaccion: pintarInteraccion,
     nombres: pintarNombres,
+    rsc: pintarRsc,
 };
 
 function pintar() {
@@ -630,6 +701,7 @@ function pintar() {
     $("admin-aviso-servidor").hidden = !estado.avisoServidor;
     $("admin-aviso-servidor").textContent = estado.avisoServidor;
     pintarUsuarios(); // también actualiza el contador de la pestaña
+    if (estado.pestana !== "rsc") pintarRsc();
     pintores[estado.pestana]();
 }
 
@@ -661,13 +733,14 @@ async function intentar(promesa, porDefecto) {
 
 async function cargar() {
     estado.avisoServidor = "";
-    const [usuarios, opiniones, prohibidos, ajustes] = await Promise.all([
+    const [usuarios, opiniones, prohibidos, ajustes, peticiones] = await Promise.all([
         intentar(Store.adminListarUsuarios(), estado.usuarios),
         intentar(Store.adminListarOpiniones(), []),
         intentar(Store.adminListarNombresProhibidos(), NOMBRES_PROHIBIDOS_BASE),
         intentar(Store.adminLeerAjustesFacturacion(), { ...FACTURACION_DEFECTO }),
+        intentar(Store.adminListarPeticionesSolidarias(), []),
     ]);
-    Object.assign(estado, { usuarios, opiniones, prohibidos, ajustes });
+    Object.assign(estado, { usuarios, opiniones, prohibidos, ajustes, peticiones });
 }
 
 async function mostrar() {
@@ -723,6 +796,24 @@ $("fact-bonif-anadir").addEventListener("click", () => {
     estado.ajustes.bonificadas = { ...estado.ajustes.bonificadas, [id]: pct };
     pintarBonificadas();
     UI.toast("Bonificación añadida. Pulsa «Guardar ajustes» para aplicarla.");
+});
+
+$("rsc-voluntarios").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.target;
+    const ids = [...$("rsc-voluntarios-lista").selectedOptions].map((o) => o.value);
+    const importe = Number(form.importe.value);
+    if (!ids.length || !(importe >= 1)) return;
+    if (!confirm(`¿Sumar ${formatoCC(importe)} a ${ids.length} voluntario(s)?`)) return;
+    try {
+        for (const id of ids) await Store.adminBonificar(id, importe, form.motivo.value.trim() || "Voluntariado CeutaPlay");
+        estado.usuarios = await Store.adminListarUsuarios();
+        $("rsc-voluntarios-lista").selectedIndex = -1;
+        UI.toast(`Recompensa enviada a ${ids.length} voluntario(s).`);
+    } catch (error) {
+        UI.toast(error.message, "error");
+    }
+    pintar();
 });
 
 $("fact-ajustes").addEventListener("submit", async (event) => {
@@ -848,6 +939,31 @@ document.querySelector(".admin-page").addEventListener("click", async (event) =>
             estado.opiniones = await Store.adminListarOpiniones();
             UI.toast("Opinión borrada.");
             break;
+        case "acreditar-entidad":
+        case "retirar-entidad": {
+            const acreditar = accion === "acreditar-entidad";
+            if (!confirm(acreditar ? `¿Acreditar a «${usuario.entidad}» como entidad solidaria?`
+                : `¿Retirar la acreditación a «${usuario.entidad}»? Ya no podrá pedir pista solidaria.`)) return;
+            await Store.adminAcreditarEntidad(id, acreditar);
+            UI.toast(acreditar ? "Entidad acreditada." : "Acreditación retirada.");
+            recargarUsuarios = true;
+            break;
+        }
+        case "asignar-gestor": {
+            const usuarioId = $("rsc-gestor-usuario").value;
+            const instalacionId = Number($("rsc-gestor-instalacion").value);
+            if (!usuarioId) return;
+            await Store.adminAsignarGestor(usuarioId, instalacionId, true);
+            UI.toast(`${nombreUsuario(usuarioId)} ya gestiona ${nombreInstalacion(instalacionId)}.`);
+            recargarUsuarios = true;
+            break;
+        }
+        case "quitar-gestor":
+            if (!confirm(`¿Quitar a ${usuario.nombre} como gestor de ${nombreInstalacion(b.dataset.instalacion)}?`)) return;
+            await Store.adminAsignarGestor(id, Number(b.dataset.instalacion), false);
+            UI.toast("Gestor quitado.");
+            recargarUsuarios = true;
+            break;
         case "quitar-termino":
             if (!confirm(`¿Quitar «${b.dataset.termino}» de la lista de nombres prohibidos?`)) return;
             estado.prohibidos = await Store.adminQuitarNombreProhibido(b.dataset.termino);
@@ -856,7 +972,10 @@ document.querySelector(".admin-page").addEventListener("click", async (event) =>
         default:
             return;
         }
-        if (recargarUsuarios) estado.usuarios = await Store.adminListarUsuarios();
+        if (recargarUsuarios) {
+            estado.usuarios = await Store.adminListarUsuarios();
+            estado.peticiones = await Store.adminListarPeticionesSolidarias().catch(() => estado.peticiones);
+        }
     } catch (error) {
         UI.toast(error.message, "error");
     }

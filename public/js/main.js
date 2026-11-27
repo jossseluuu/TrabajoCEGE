@@ -10,21 +10,10 @@ function crearTarjetaInstalacion(instalacion) {
             <strong>${instalacion.precio} €</strong>
         </div>`;
     const icd = esInstalacionIcd(instalacion);
-    const reserva = instalacion.pistas && icd
+    const reserva = instalacion.pistas
         ? `<div class="card-footer booking-card-footer">
             <div class="price">
-                <small>Instalación pública</small>
-                <strong>Gestión del ICD</strong>
-            </div>
-            <div class="booking-card-actions">
-                <a class="reserve-btn" href="${instalacion.informacion || URL_ICD}" target="_blank" rel="noopener noreferrer">Reservar en el ICD</a>
-                <a class="login-btn" href="reservas.html?pista=${instalacion.id}#ubicacion">Ver mapa</a>
-            </div>
-        </div>`
-        : instalacion.pistas
-        ? `<div class="card-footer booking-card-footer">
-            <div class="price">
-                <small>Hora punta · valle −${Math.round((1 - TURNOS.factorValle) * 100)} %</small>
+                <small>${icd ? "Municipal (ICD) · tramitamos la reserva" : `Hora punta · valle −${Math.round((1 - TURNOS.factorValle) * 100)} %`}</small>
                 <strong>${instalacion.precioPrueba} CC / hora</strong>
             </div>
             <div class="booking-card-actions">

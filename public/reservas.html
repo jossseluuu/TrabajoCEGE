@@ -11,8 +11,10 @@
     <script src="js/data.js" defer></script>
     <script src="js/store.js" defer></script>
     <script src="js/nav.js" defer></script>
+    <script src="js/avisos.js" defer></script>
     <script src="js/booking-storage.js" defer></script>
     <script src="js/auth.js" defer></script>
+    <script src="js/viento.js" defer></script>
     <script src="js/reservas.js" defer></script>
     <script src="js/opiniones.js" defer></script>
 </head>
@@ -38,10 +40,15 @@
             <section class="reservation-panel reservation-slot" aria-labelledby="slot-title">
                 <h2 id="slot-title">Elige tu turno</h2>
                 <div id="icd-panel" class="icd-panel" hidden>
-                    <p><strong>🏛️ Instalación pública del Instituto Ceutí de Deportes.</strong></p>
-                    <p>Las instalaciones municipales se reservan directamente en el ICD. Desde CeutaPlay te llevamos a su web oficial.</p>
-                    <p><a id="icd-link" class="register-btn" target="_blank" rel="noopener noreferrer">Reservar en el ICD</a></p>
+                    <p><strong>🏛️ Instalación municipal del Instituto Ceutí de Deportes (ICD).</strong></p>
+                    <p>CeutaPlay hace de intermediario: reservas y pagas aquí con CeutaCoins, y nosotros tramitamos la reserva con el ICD. Recibirás la confirmación en «Mis reservas». <em>(Simulación: en esta versión la tramitación con el ICD no es real).</em></p>
                 </div>
+                <section id="wind-panel" class="wind-panel" aria-labelledby="wind-title" hidden>
+                    <h3 id="wind-title">🌬️ Parte de viento</h3>
+                    <p id="wind-now" class="wind-now"></p>
+                    <ul id="wind-hours" class="wind-hours" aria-label="Viento por horas"></ul>
+                    <p id="wind-tip" class="form-hint"></p>
+                </section>
                 <form id="reservation-form" class="login-form reservation-form" aria-describedby="reservation-help">
                     <div class="reservation-field">
                         <label for="facility">Instalación</label>

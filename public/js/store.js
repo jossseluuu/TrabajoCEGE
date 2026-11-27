@@ -148,7 +148,6 @@ const Store = (() => {
     function validarReserva({ facility, court, date, time, duracion = 60 }, ahoraMs) {
         const instalacion = INSTALACIONES.find((i) => i.id === Number(facility));
         if (!instalacion || !instalacion.pistas || !instalacion.pistas.includes(court)) throw new Error("Elige una pista.");
-        if (esInstalacionIcd(instalacion)) throw new Error("Esta instalación es pública: se reserva en el Instituto Ceutí de Deportes.");
         duracion = Number(duracion);
         if (!duracionesPosibles().includes(duracion)) throw new Error("La duración tiene que ser de 30 min a 3 h, en tramos de 30 min.");
         if (!/^\d{2}:\d{2}$/.test(time || "") || aMinutos(time) % TURNOS.tramoMin) throw new Error("Las reservas empiezan a en punto o a y media.");
@@ -1152,7 +1151,7 @@ const Store = (() => {
             version: `cp_version_demo:${CARPETA}`,
         };
         // Si cambian los datos de ejemplo, se suben de versión y se recrean
-        const VERSION_DEMO = "4";
+        const VERSION_DEMO = "5";
 
         const ahora = () => Date.now();
 

@@ -367,6 +367,14 @@ begin
     insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
     values (v_nora, -public.precio_turno(15, v_hoy + 8, '19:30', 60), 'reserva', 'Club de Tenis Ceuta · Pista 3', v_res, now() + interval '5 days');
     insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
+    values (v_luis, 10, 'Tuhami Al Lal', v_hoy + 4, '20:00', 90, public.precio_turno(25, v_hoy + 4, '20:00', 90),
+        true, true, 14, 'Fútbol 7 en el Príncipe. Nos faltan cuatro.', now() + interval '1 days')
+    returning id into v_res;
+    insert into public.movimientos (usuario_id, importe, tipo, concepto, referencia, creado)
+    values (v_luis, -public.precio_turno(25, v_hoy + 4, '20:00', 90), 'reserva', 'Campos de Fútbol del Príncipe · Tuhami Al Lal', v_res, now() + interval '1 days');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_youssef, 'aceptado', 'Juego de lateral');
+    insert into public.participantes (reserva_id, usuario_id, estado, mensaje) values (v_res, v_hamza, 'aceptado', '');
+    insert into public.reservas (usuario_id, instalacion_id, pista, fecha, hora, duracion_min, importe, publica, mostrar_nombre, plazas, nota, creada)
     values (v_karim, 4, 'Doble 1', v_hoy + -44, '18:00', 60, public.precio_turno(15, v_hoy + -44, '18:00', 60),
         true, true, 4, '', now() + interval '-47 days')
     returning id into v_res;

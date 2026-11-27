@@ -46,6 +46,7 @@ TrabajoGabi/
 │   ├── registro.html         ← crear cuenta
 │   ├── perfil.html           ← mi nivel, perfil público, monedero, reservas y subastas
 │   ├── comunidad.html        ← partidos abiertos, jugadores y ranking
+│   ├── gestor.html           ← panel del gestor de una instalación
 │   ├── reservas.html         ← reservar pistas (con opiniones y agenda)
 │   ├── mapa.html             ← mapa de instalaciones
 │   ├── admin.html            ← panel de administración (solo admins)
@@ -66,6 +67,9 @@ TrabajoGabi/
 │       ├── perfil.js         ← página de perfil
 │       ├── comunidad.js      ← página de comunidad
 │       ├── comunidad-comun.js← avatares, niveles e insignias (comunidad y perfil)
+│       ├── gestor.js         ← panel del gestor
+│       ├── avisos.js         ← campana de avisos del menú
+│       ├── viento.js         ← parte de viento (Open-Meteo) para los deportes náuticos
 │       ├── admin.js          ← panel de administración
 │       ├── mapa.js, opiniones.js, portada.js
 └── README.md
@@ -73,7 +77,17 @@ TrabajoGabi/
 
 ---
 
-## 🆕 Fase 2: comunidad, perfil editable y niveles
+## 🆕 Fase 3: avisos, viento, panel del gestor y pista solidaria
+
+- **🔔 Avisos** (campana del menú, con contador): te han superado en una subasta, has ganado, tu reventa se ha vendido, alguien quiere unirse a tu partido, te han aceptado o rechazado, tu partido es hoy o mañana, pista solidaria cedida, turnos de tu deporte favorito a mitad de precio y mejora del viento. Se pueden recibir también como notificaciones del navegador mientras la web está abierta.
+- **🌬️ Parte de viento** para kayak, paddle surf y piragüismo: viento por horas del día elegido (🟢 menos de 15 km/h, 🟡 hasta 25, 🔴 más), si es levante o poniente, qué bahía conviene y la próxima hora buena. Datos de [Open-Meteo](https://open-meteo.com) (gratis, sin clave; solo se envían las coordenadas de Ceuta).
+- **🏟️ Panel del gestor** (`gestor.html`, aparece en el menú de las cuentas gestoras): agenda del día con el nombre de quien reserva, bloqueo de pistas de 30 min a 12 h (mantenimiento, torneos), próximas reservas, ocupación, ingresos y liquidación estimada del mes. Prueba con `gestor@ceutaplay.es`.
+- **🤝 Pista solidaria** desde *Mi perfil*: una entidad social solicita la acreditación y, una vez acreditada, pide pista para un día y una franja. Si una pista de última hora se queda sin pujas, se le cede gratis. Prueba con `entidad@ceutaplay.es`.
+- **Panel admin → 🤝 RSC y gestores:** acreditar o retirar entidades, ver las peticiones y las pistas cedidas, asignar gestores a cada instalación y recompensar con CeutaCoins a los voluntarios de las jornadas de limpieza de playas.
+- **🏛️ Instalaciones del ICD:** ya no se redirige a la web del ICD. Se reservan y pagan en CeutaPlay como el resto: CeutaPlay hace de intermediario y tramita la reserva con el ICD (en esta versión, simulado). No salen a subasta ni se revenden.
+- **En Supabase:** vuelve a ejecutar `supabase/plataforma.sql` (bloqueos de hasta 12 h e instalaciones del ICD reservables) y, en un proyecto de pruebas, `supabase/seed.sql`.
+
+## Fase 2: comunidad, perfil editable y niveles
 
 - **Comunidad** (`comunidad.html`, en el menú): tres pestañas.
   - **Partidos abiertos:** reservas de otros jugadores que buscan gente. Se pide unirse con un mensaje; el organizador acepta o rechaza en *Mis reservas*. También se puede retirar la solicitud o salir del partido.
@@ -94,7 +108,7 @@ TrabajoGabi/
 - **El administrador controla el saldo:** en *Panel admin → Usuarios → 🪙 Saldo* puede fijar el saldo de cualquier cuenta (también la suya) o sumar y restar (`+500`, `-200`). Cada cambio queda en el historial del usuario.
 - **Privacidad:** cada usuario solo ve sus reservas y las abiertas; las del resto aparecen como «Ocupada».
 - **Reservas abiertas:** al reservar se puede abrir la reserva para que otros pidan unirse (el dueño acepta o rechaza en *Mis reservas*).
-- **Instalaciones públicas (ICD):** los campos municipales ya no se reservan en CeutaPlay; se redirige al Instituto Ceutí de Deportes (`gestion: "icd"` en `data.js`, enlace en `URL_ICD`).
+- **Instalaciones públicas (ICD):** en la Fase 1 redirigían al ICD; desde la Fase 3 se reservan en CeutaPlay, que hace de intermediario (ver arriba).
 - **Reventa hasta el inicio:** al subastar una reserva, la subasta puede durar como máximo hasta la hora en que empieza.
 - **Contraseñas más seguras:** mínimo 8 caracteres, con letras y números. (En Supabase conviene poner también la longitud mínima en *Authentication → Providers → Email*).
 - **Datos ficticios:** usuarios con biografía, reservas pasadas y futuras, reseñas, jugadores unidos a reservas, subastas, un gestor de instalación y una entidad solidaria.

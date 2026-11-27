@@ -176,6 +176,88 @@ profileForm.addEventListener("submit", async (event) => {
     }
 });
 
+// ---------- pista solidaria (entidades sociales) ----------
+
+const ESTADOS_PETICION = { pendiente: "⏳ Esperando pista", cumplida: "✅ Pista cedida", caducada: "Caducada", cancelada: "Cancelada" };
+
+function showSolidaria() {
+    const zona = document.getElementById("solidaria-contenido");
+    if (zona.contains(document.activeElement)) return; // no se pisa un formulario a medio rellenar
+    const entidad = Store.entidad();
+    const esc = Comunidad.esc;
+    if (!entidad) {
+        zona.innerHTML = `
+            <details class="points-help">
+                <summary>¿Representas a una entidad social? Solicita la acreditación</summary>
+                <form class="login-form" data-form="entidad">
+                    <label for="entidad-nombre">Nombre de la entidad</label>
+                    <input id="entidad-nombre" name="nombre" minlength="3" maxlength="80" required placeholder="Ej.: Club de Deporte Adaptado Ceuta">
+                    <label for="entidad-descripcion">¿A quién ayudáis?</label>
+                    <textarea id="entidad-descripcion" name="descripcion" rows="2" maxlength="280"></textarea>
+                    <button type="submit" class="register-btn">Solicitar acreditación</button>
+                </form>
+            </details>`;
+        return;
+    }
+    if (!entidad.acreditada) {
+        zona.innerHTML = `<p class="tag-soft">⏳ <strong>${esc(entidad.nombre)}</strong>: solicitud enviada. El equipo de CeutaPlay revisará la acreditación.</p>`;
+        return;
+    }
+    const hoy = ceutaDateTime().slice(0, 10);
+    const deportes = [...new Set(INSTALACIONES.filter((i) => esReservable(i) && (i.subastaAutomatica ?? SUBASTA_AUTOMATICA.deportes.includes(i.deporte))).map((i) => i.deporte))];
+    const peticiones = Store.peticionesSolidarias();
+    zona.innerHTML = `
+        <p><span class="badge">✅ ${esc(entidad.nombre)} · entidad acreditada</span></p>
+        <form class="login-form solidaria-form" data-form="peticion">
+            <label>Deporte<select name="deporte">${deportes.map((d) => `<option>${esc(d)}</option>`).join("")}</select></label>
+            <label>Instalación<select name="instalacion"><option value="">Cualquiera</option>${INSTALACIONES.filter((i) => deportes.includes(i.deporte) && esReservable(i)).map((i) => `<option value="${i.id}">${esc(i.nombre)}</option>`).join("")}</select></label>
+            <label>Día<input type="date" name="fecha" min="${hoy}" value="${hoy}" required></label>
+            <label>Desde<input type="time" name="desde" step="1800" value="16:00" required></label>
+            <label>Hasta<input type="time" name="hasta" step="1800" value="20:00" required></label>
+            <button type="submit" class="register-btn">Pedir pista solidaria</button>
+        </form>
+        <ul class="wallet-moves">${peticiones.map((p) => `
+            <li><span>${p.fecha.split("-").reverse().join("/")} · ${esc(p.deporte)} · ${p.desde}–${p.hasta}${p.instalacionId ? ` · ${esc(INSTALACIONES.find((i) => i.id === Number(p.instalacionId))?.nombre || "")}` : ""}</span>
+                <span>${ESTADOS_PETICION[p.estado] || p.estado}${p.estado === "pendiente" ? ` <button type="button" class="login-btn" data-cancelar-peticion="${p.id}">Cancelar</button>` : ""}</span></li>`).join("")
+            || "<li>Aún no habéis pedido ninguna pista.</li>"}</ul>`;
+}
+
+document.getElementById("solidaria-contenido").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.target;
+    const button = form.querySelector("button[type=submit]");
+    button.disabled = true;
+    try {
+        if (form.dataset.form === "entidad") {
+            await Store.solicitarEntidad(form.nombre.value, form.descripcion.value);
+            UI.toast("Solicitud enviada. Te avisaremos al acreditarla.");
+        } else {
+            await Store.crearPeticionSolidaria({
+                deporte: form.deporte.value, instalacionId: form.instalacion.value || null,
+                fecha: form.fecha.value, desde: form.desde.value, hasta: form.hasta.value,
+            });
+            UI.toast("Petición registrada: si una pista de esa franja se queda sin pujas, es vuestra.");
+        }
+        document.activeElement.blur();
+        showSolidaria();
+    } catch (error) {
+        UI.toast(error.message, "error");
+    } finally {
+        button.disabled = false;
+    }
+});
+
+document.getElementById("solidaria-contenido").addEventListener("click", async (event) => {
+    const b = event.target.closest("[data-cancelar-peticion]");
+    if (!b || !confirm("¿Cancelar esta petición?")) return;
+    try {
+        await Store.cancelarPeticionSolidaria(b.dataset.cancelarPeticion);
+        showSolidaria();
+    } catch (error) {
+        UI.toast(error.message, "error");
+    }
+});
+
 function showProfile() {
     if (!requireLogin()) {
         profilePanel.hidden = true;
@@ -188,6 +270,7 @@ function showProfile() {
     fillProfileForm(usuario);
     showLevel(usuario);
     showWallet();
+    showSolidaria();
     showBookingSummary();
     showAuctionSummary(usuario);
     profilePanel.hidden = false;

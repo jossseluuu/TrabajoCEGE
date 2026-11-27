@@ -14,6 +14,8 @@
     <script src="js/booking-storage.js" defer></script>
     <script src="js/auth.js" defer></script>
     <script src="js/nav.js" defer></script>
+    <script src="js/viento.js" defer></script>
+    <script src="js/avisos.js" defer></script>
     <script src="js/admin.js" defer></script>
 </head>
 <body data-requiere-login>
@@ -52,6 +54,7 @@
                 <button type="button" class="auction-filter" role="tab" data-tab="usuarios" aria-selected="false">👥 Usuarios <span class="admin-count" id="cuenta-revisar" hidden></span></button>
                 <button type="button" class="auction-filter" role="tab" data-tab="interaccion" aria-selected="false">💬 Interacción</button>
                 <button type="button" class="auction-filter" role="tab" data-tab="nombres" aria-selected="false">🚫 Nombres prohibidos</button>
+                <button type="button" class="auction-filter" role="tab" data-tab="rsc" aria-selected="false">🤝 RSC y gestores <span class="admin-count" id="cuenta-rsc" hidden></span></button>
             </div>
 
             <div class="admin-search" id="admin-search-box" hidden>
@@ -265,6 +268,58 @@
                 <div class="reservation-panel">
                     <h2 class="admin-h2">Lista de términos (<span id="nombres-total">0</span>)</h2>
                     <ul class="admin-chips" id="nombres-lista"></ul>
+                </div>
+            </section>
+
+            <!-- ============ RSC Y GESTORES ============ -->
+            <section class="admin-section" data-seccion="rsc" aria-label="RSC y gestores" hidden>
+                <dl class="admin-stats" id="rsc-stats"></dl>
+
+                <div class="reservation-panel">
+                    <h2 class="admin-h2">🤝 Entidades solidarias</h2>
+                    <p class="admin-hint">Asociaciones juveniles, clubes de deporte adaptado y entidades sociales que lo solicitan desde su perfil. Solo las acreditadas pueden pedir pista solidaria: si una pista de última hora se queda sin pujas, se les cede gratis 15 minutos antes.</p>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead><tr><th>Entidad</th><th>Cuenta</th><th>Pistas recibidas</th><th>Estado</th><th></th></tr></thead>
+                            <tbody id="rsc-entidades"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="reservation-panel">
+                    <h2 class="admin-h2">📋 Peticiones de pista solidaria</h2>
+                    <div class="admin-table-wrap">
+                        <table class="admin-table">
+                            <thead><tr><th>Día</th><th>Entidad</th><th>Deporte</th><th>Instalación</th><th>Franja</th><th>Estado</th></tr></thead>
+                            <tbody id="rsc-peticiones"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="admin-grid">
+                    <form class="reservation-panel admin-form" id="rsc-voluntarios">
+                        <h2 class="admin-h2">🌊 Recompensar voluntariado</h2>
+                        <p class="admin-hint">Jornadas de recogida de residuos en las playas (Ribera, Chorrillo, Benítez, Calamocarro): suma saldo gratuito a cada voluntario. Queda en su historial de movimientos.</p>
+                        <label>Voluntarios <small>(Ctrl/Cmd para elegir varios)</small>
+                            <select name="usuarios" multiple size="6" required id="rsc-voluntarios-lista"></select>
+                        </label>
+                        <div class="admin-form-row">
+                            <label>CeutaCoins por persona<input name="importe" type="number" min="1" max="100000" value="50" required></label>
+                            <label>Jornada<input name="motivo" maxlength="100" value="Voluntariado · limpieza de la playa de la Ribera" required></label>
+                        </div>
+                        <button type="submit" class="register-btn">Recompensar</button>
+                    </form>
+
+                    <div class="reservation-panel admin-form">
+                        <h2 class="admin-h2">🏟️ Gestores de instalaciones</h2>
+                        <p class="admin-hint">Un gestor ve todas las reservas de su instalación, bloquea turnos (mantenimiento, torneos) y consulta su liquidación en el <a href="gestor.html">panel del gestor</a>.</p>
+                        <div class="admin-form-row" id="rsc-gestor-form">
+                            <label>Instalación<select id="rsc-gestor-instalacion"></select></label>
+                            <label>Usuario<select id="rsc-gestor-usuario"></select></label>
+                            <button type="button" class="register-btn" data-accion="asignar-gestor">Asignar</button>
+                        </div>
+                        <ul class="admin-alertas" id="rsc-gestores"></ul>
+                    </div>
                 </div>
             </section>
         </div>

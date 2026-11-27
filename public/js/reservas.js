@@ -4,7 +4,8 @@
 //   disponibilidad tiene en cuenta los solapes con otras reservas.
 // · Precio por franja (hora valle / punta) y pago con CeutaCoins.
 // · Reserva abierta: otros jugadores pueden pedir unirse (comunidad).
-// · Instalaciones públicas del ICD: no se reservan aquí, se redirige al ICD.
+// · Instalaciones municipales del ICD: se reservan aquí y CeutaPlay tramita la
+//   reserva con el ICD (intermediario, simulado).
 
 const facilities = INSTALACIONES.filter((installation) => installation.pistas);
 const selectedId = new URLSearchParams(window.location.search).get("pista");
@@ -332,6 +333,7 @@ function showReservations() {
                 <strong>${UI.escapeHTML(facility?.nombre || "Instalación")} · ${UI.escapeHTML(r.court)}</strong>
                 <span>${date} · ${r.time}–${endTime(r)} (${textoDuracion(r.duracion || 60)})${r.importe != null ? ` · ${formatoCC(r.importe)}` : ""}</span>
                 ${r.tipo === "solidaria" ? `<span class="tag-soft">🤝 Pista solidaria</span>` : ""}
+                ${esInstalacionIcd(facility) ? `<span class="tag-soft">🏛️ Reserva tramitada con el ICD</span>` : ""}
                 ${enSubasta.has(r.id) ? `<span class="tag-soft">🔁 En subasta</span>` : ""}
                 ${r.publica ? `<span class="tag-soft">🙋 Abierta · ${accepted.length + 1}/${r.plazas} jugadores${r.nota ? ` · “${UI.escapeHTML(r.nota)}”` : ""}</span>` : ""}
             </div>
@@ -437,13 +439,54 @@ function showFacilityPhoto(facility) {
     loadPhoto(photo || fallback, !photo);
 }
 
+// ---------- parte de viento (deportes náuticos) ----------
+
+async function renderWind() {
+    const facility = currentFacility();
+    const panel = $id("wind-panel");
+    panel.hidden = !Viento.esNautico(facility.deporte);
+    if (panel.hidden) return;
+    const date = dateInput.value || ceutaDateTime().slice(0, 10);
+    $id("wind-now").textContent = "Cargando la previsión…";
+    let hours;
+    try {
+        hours = await Viento.obtener();
+    } catch {
+        $id("wind-now").textContent = "No se ha podido cargar el parte de viento. Consulta la previsión antes de salir al agua.";
+        $id("wind-hours").replaceChildren();
+        $id("wind-tip").textContent = "";
+        return;
+    }
+    if (currentFacility() !== facility) return; // se ha cambiado de instalación mientras cargaba
+    const now = ceutaDateTime();
+    const { apertura, cierre } = horarioDe(facility);
+    const current = hours.find((h) => h.fecha === now.slice(0, 10) && h.hora.slice(0, 2) === now.slice(11, 13));
+    const day = hours.filter((h) => h.fecha === date && aMinutos(h.hora) >= apertura && aMinutos(h.hora) < cierre);
+    const nombreTipo = { levante: "de levante", poniente: "de poniente", otro: "" };
+    $id("wind-now").innerHTML = current
+        ? `Ahora: <strong>${Viento.ESTADOS[current.estado].icono} ${current.velocidad} km/h ${nombreTipo[current.tipo]}</strong> (rachas de ${current.rachas} km/h)`
+        : day.length ? `Previsión para el ${date.split("-").reverse().join("/")}` : "No hay previsión para ese día todavía (solo los próximos 3 días).";
+    $id("wind-hours").innerHTML = day.map((h) => `
+        <li class="wind-hour wind-${h.estado}" title="${Viento.ESTADOS[h.estado].texto}: ${h.velocidad} km/h, rachas ${h.rachas} km/h ${nombreTipo[h.tipo]}">
+            <strong>${h.hora}</strong>
+            <span class="wind-arrow" style="transform: rotate(${(h.direccion + 180) % 360}deg)" aria-hidden="true">↑</span>
+            <span>${Viento.ESTADOS[h.estado].icono} ${h.velocidad}</span>
+            <small>${h.tipo === "otro" ? "km/h" : h.tipo}</small>
+        </li>`).join("");
+    const main = day.length ? day.reduce((a, h) => ({ ...a, [h.tipo]: (a[h.tipo] || 0) + 1 }), {}) : {};
+    const dominant = Object.keys(main).sort((a, b) => main[b] - main[a])[0];
+    const best = Viento.mejorVentana(hours, now, aHora(apertura), aHora(cierre));
+    $id("wind-tip").textContent = [
+        dominant ? Viento.consejo(dominant) : "",
+        best ? `Próxima hora buena: ${best.fecha === now.slice(0, 10) ? "hoy" : "mañana"} a las ${best.hora}.` : "Sin horas buenas en las próximas 24 h.",
+        "🟢 menos de 15 km/h · 🟡 hasta 25 · 🔴 más.",
+    ].filter(Boolean).join(" ");
+}
+
 function updateFacility() {
     const facility = currentFacility();
     const icd = esInstalacionIcd(facility);
     $id("icd-panel").hidden = !icd;
-    $id("icd-link").href = facility.informacion || URL_ICD;
-    $id("icd-link").textContent = facility.informacion ? "Ver la instalación y reservar en el ICD" : "Reservar en el ICD";
-    form.hidden = icd;
     refreshTimes();
     showFacilityPhoto(facility);
     updateCourtAvailability();
@@ -464,9 +507,10 @@ function updateFacility() {
     $id("facility-contact").hidden = !facility.contacto;
     $id("facility-contact").href = facility.contacto || "";
     locationSection.hidden = false;
-    if (Store.usuarioActual() && !icd) schedule.hidden = false;
+    if (Store.usuarioActual()) schedule.hidden = false;
     renderAgenda();
     renderSchedule();
+    renderWind();
 }
 
 function showWallet() {
@@ -490,6 +534,7 @@ if (window.location.hash === "#ubicacion") locationSection.scrollIntoView();
 facilitySelect.addEventListener("change", updateFacility);
 dateInput.addEventListener("change", () => {
     if (dateInput.value) agendaDate = dateInput.value;
+    renderWind();
     refreshTimes();
     updateCourtAvailability();
     renderAgenda();

@@ -4,7 +4,8 @@
 // Cada página solo necesita:
 //   <header class="navbar" id="site-header" data-pagina="inicio"></header>
 // y cargar este archivo después de store.js. Valores de data-pagina:
-// inicio, mapa, reservas, comunidad, perfil, admin, login, registro.
+// inicio, mapa, reservas, comunidad, perfil, gestor, admin, login, registro.
+// Si la página carga también js/avisos.js (y js/viento.js), aparece la campana.
 //
 // En la página principal los botones de entrar/registrarse abren la ventana
 // de auth.js; en el resto llevan a login.html y vuelven después a la página.
@@ -32,6 +33,9 @@ const Nav = (() => {
             { href: `${base}#subastas`, texto: "Subastas" },
             { href: "comunidad.html", texto: "Comunidad", pagina: "comunidad" },
         ];
+        if (usuario && !usuario.admin && Store.gestiona().length) {
+            lista.push({ href: "gestor.html", texto: "Panel gestor", pagina: "gestor", clase: "nav-admin" });
+        }
         if (usuario && usuario.admin) {
             lista.push({ href: "admin.html", texto: "Panel admin", pagina: "admin", clase: "nav-admin" });
         }
@@ -51,6 +55,8 @@ const Nav = (() => {
         if (usuario) {
             const inicial = esc((usuario.nombre || "?").trim().charAt(0).toUpperCase());
             return `
+                <button type="button" class="nav-bell" data-nav="avisos" aria-label="Avisos" aria-expanded="false"
+                        aria-controls="avisos-panel">🔔<span class="bell-count" hidden></span></button>
                 <a class="user-chip" href="perfil.html" title="Mi perfil (${esc(usuario.email)})"
                    ${paginaActual() === "perfil" ? 'aria-current="page"' : ""}>
                     <span class="user-avatar" aria-hidden="true">${inicial}</span>
@@ -86,6 +92,7 @@ const Nav = (() => {
                     <div class="nav-actions" id="nav-actions">${acciones(usuario)}</div>
                 </div>
             </div>`;
+        if ((typeof Avisos !== "undefined") && usuario) Avisos.pintar();
     }
 
     async function cerrarSesion() {
@@ -96,7 +103,7 @@ const Nav = (() => {
             return;
         }
         document.dispatchEvent(new CustomEvent("sesion-cambiada"));
-        if (window.UI) UI.toast("Has cerrado sesión.");
+        if ((typeof UI !== "undefined")) UI.toast("Has cerrado sesión.");
     }
 
     function iniciar() {
@@ -107,6 +114,7 @@ const Nav = (() => {
         header.addEventListener("click", (event) => {
             const boton = event.target.closest("[data-nav]");
             if (boton && boton.dataset.nav === "logout") cerrarSesion();
+            if (boton && boton.dataset.nav === "avisos" && (typeof Avisos !== "undefined")) Avisos.alternar();
             if (boton && boton.dataset.nav === "menu") {
                 const abierto = header.classList.toggle("menu-abierto");
                 boton.setAttribute("aria-expanded", abierto);
